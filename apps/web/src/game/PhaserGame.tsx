@@ -42,11 +42,18 @@ export const PhaserGame: React.FC<PhaserGameProps> = ({
     const handleGameOver = () => onGameOver?.();
     const handleUpdateScore = (score: number) => onUpdateScore?.(score);
     const handleUpdateTime = (time: number) => onUpdateTime?.(time);
+    const handleStartLevel = (levelData: any) => {
+      if (!gameRef.current) return;
+      const sceneManager = gameRef.current.scene;
+      if (sceneManager.isActive('MemoGame')) return;
+      sceneManager.start('MemoGame', { levelData });
+    };
 
     EventBus.on(GameEvents.LEVEL_COMPLETE, handleLevelComplete);
     EventBus.on(GameEvents.GAME_OVER, handleGameOver);
     EventBus.on(GameEvents.UPDATE_SCORE, handleUpdateScore);
     EventBus.on(GameEvents.UPDATE_TIME, handleUpdateTime);
+    EventBus.on(GameEvents.START_LEVEL, handleStartLevel);
 
     // 3. Cleanup al desmontar
     return () => {
@@ -54,6 +61,7 @@ export const PhaserGame: React.FC<PhaserGameProps> = ({
       EventBus.off(GameEvents.GAME_OVER, handleGameOver);
       EventBus.off(GameEvents.UPDATE_SCORE, handleUpdateScore);
       EventBus.off(GameEvents.UPDATE_TIME, handleUpdateTime);
+      EventBus.off(GameEvents.START_LEVEL, handleStartLevel);
       
       if (gameRef.current) {
         gameRef.current.destroy(true);

@@ -6,7 +6,7 @@ export class GameOver extends Scene {
     super('GameOver');
   }
 
-  init(data: { win: boolean, stars: number }) {
+  init() {
     // Inicializar data
   }
 

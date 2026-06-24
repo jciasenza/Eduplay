@@ -11,7 +11,7 @@ interface AuthState {
   setLoading: (loading: boolean) => void;
   signOut: () => Promise<void>;
   signInWithGoogle: () => Promise<void>;
-  signUpWithEmail: (email: string, password: string) => Promise<{ error: any }>;
+  signUpWithEmail: (name: string, email: string, password: string) => Promise<{ error: any }>;
   signInWithEmail: (email: string, password: string) => Promise<{ error: any }>;
 }
 
@@ -37,16 +37,32 @@ export const useAuth = create<AuthState>((set) => ({
     });
   },
 
-  signUpWithEmail: async (email, password) => {
+  signUpWithEmail: async (name, email, password) => {
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
+      options: {
+        data: {
+          name,
+          full_name: name,
+          display_name: name,
+        },
+      },
     });
+
+    if (!error && data.user?.identities?.length === 0) {
+      return {
+        error: {
+          message: 'Este email ya esta registrado. Ingresa con tu cuenta o usa otro email.',
+        },
+      };
+    }
+
     return { error };
   },
 
   signInWithEmail: async (email, password) => {
-    const { data, error } = await supabase.auth.signInWithPassword({
+    const { error } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
@@ -55,7 +71,7 @@ export const useAuth = create<AuthState>((set) => ({
 }));
 
 // Inicializar el listener de auth
-supabase.auth.onAuthStateChange((event, session) => {
+supabase.auth.onAuthStateChange((_event, session) => {
   useAuth.getState().setSession(session);
   useAuth.getState().setUser(session?.user ?? null);
   useAuth.getState().setLoading(false);
