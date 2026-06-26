@@ -24,23 +24,6 @@ export class MainMenu extends Scene {
       color: '#ffffff'
     }).setOrigin(0.5);
 
-    // Escuchar evento desde React para iniciar un nivel
-    const handleStartLevel = (levelData: any) => {
-      // Usar delayedCall para asegurarnos de que el Scene Manager
-      // esté completamente listo antes de cambiar de escena.
-      this.time.delayedCall(16, () => {
-        if (this.scene.isActive('MainMenu')) {
-          this.scene.start('MemoGame', { levelData });
-        }
-      });
-    };
-
-    EventBus.on(GameEvents.START_LEVEL, handleStartLevel);
-
-    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
-      EventBus.off(GameEvents.START_LEVEL, handleStartLevel);
-    });
-
     // Notificar a React que el juego está en el menú y listo
     EventBus.emit(GameEvents.GAME_READY);
   }

@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 
-export const useScrollReveal = () => {
+export const useScrollReveal = (deps: unknown[] = []) => {
   useEffect(() => {
     const targets = Array.from(document.querySelectorAll<HTMLElement>('[data-reveal]'));
     if (!targets.length) return;
@@ -19,5 +19,5 @@ export const useScrollReveal = () => {
 
     targets.forEach((target) => observer.observe(target));
     return () => observer.disconnect();
-  }, []);
+  }, deps);
 };

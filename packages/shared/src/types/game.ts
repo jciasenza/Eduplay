@@ -2,11 +2,13 @@
 // Game Types — Data-driven level structure
 // ============================================
 
-export enum Difficulty {
-  EASY = 'EASY',
-  MEDIUM = 'MEDIUM',
-  HARD = 'HARD',
-}
+export const Difficulty = {
+  EASY: 'EASY',
+  MEDIUM: 'MEDIUM',
+  HARD: 'HARD',
+} as const;
+
+export type Difficulty = (typeof Difficulty)[keyof typeof Difficulty];
 
 export interface World {
   id: string;

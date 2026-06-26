@@ -1,4 +1,5 @@
-import { SubscriptionPlan, PlanType } from '../types/subscription';
+import { PlanType } from '../types/subscription';
+import type { SubscriptionPlan } from '../types/subscription';
 
 /**
  * Subscription plan definitions.

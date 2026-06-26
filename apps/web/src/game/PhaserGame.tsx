@@ -45,7 +45,12 @@ export const PhaserGame: React.FC<PhaserGameProps> = ({
     const handleStartLevel = (levelData: any) => {
       if (!gameRef.current) return;
       const sceneManager = gameRef.current.scene;
-      if (sceneManager.isActive('MemoGame')) return;
+      if (sceneManager.isActive('GameOver') || sceneManager.isPaused('GameOver') || sceneManager.isSleeping('GameOver')) {
+        sceneManager.stop('GameOver');
+      }
+      if (sceneManager.isActive('MemoGame')) {
+        sceneManager.stop('MemoGame');
+      }
       sceneManager.start('MemoGame', { levelData });
     };
 

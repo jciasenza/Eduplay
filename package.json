@@ -13,6 +13,8 @@
     "dev:web": "npm run dev --workspace=apps/web",
     "dev:api": "npm run dev --workspace=apps/api",
     "dev:admin": "npm run dev --workspace=apps/admin",
+    "update:progress": "node scripts/update-progress.js",
+    "install:hooks": "node scripts/git-hooks/install-hooks.js",
     "build": "turbo run build",
     "typecheck": "turbo run typecheck",
     "lint": "turbo run lint",

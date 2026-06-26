@@ -2,19 +2,24 @@
 // Subscription Types
 // ============================================
 
-export enum SubscriptionStatus {
-  FREE = 'FREE',
-  ACTIVE = 'ACTIVE',
-  CANCELLED = 'CANCELLED',
-  PAST_DUE = 'PAST_DUE',
-  EXPIRED = 'EXPIRED',
-}
+export const SubscriptionStatus = {
+  FREE: 'FREE',
+  ACTIVE: 'ACTIVE',
+  CANCELLED: 'CANCELLED',
+  PAST_DUE: 'PAST_DUE',
+  EXPIRED: 'EXPIRED',
+} as const;
 
-export enum PlanType {
-  MONTHLY = 'monthly',
-  YEARLY = 'yearly',
-  FAMILY = 'family',
-}
+export type SubscriptionStatus =
+  (typeof SubscriptionStatus)[keyof typeof SubscriptionStatus];
+
+export const PlanType = {
+  MONTHLY: 'monthly',
+  YEARLY: 'yearly',
+  FAMILY: 'family',
+} as const;
+
+export type PlanType = (typeof PlanType)[keyof typeof PlanType];
 
 export interface Subscription {
   id: string;

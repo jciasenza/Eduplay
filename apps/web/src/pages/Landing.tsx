@@ -1,15 +1,15 @@
 import { type CSSProperties } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { SUBSCRIPTION_PLANS } from '@aventuras/shared';
 import { WorldCard } from '../components/ui/WorldCard';
-import { learningWorlds } from '../data/worlds';
+import { useLearningWorlds } from '../hooks/useLearningWorlds';
 import { useScrollReveal } from '../hooks/useScrollReveal';
-
-const [featuredWorld, ...extraWorlds] = learningWorlds;
-
 
 export const Landing = () => {
   const navigate = useNavigate();
-  useScrollReveal();
+  const { worlds, isLoading, error } = useLearningWorlds();
+  const [featuredWorld, ...extraWorlds] = worlds;
+  useScrollReveal([worlds.length]);
 
   return (
     <section className="landing-page">
@@ -97,17 +97,25 @@ export const Landing = () => {
           <span className="eyebrow">Elige un mundo</span>
           <h2>Aprendizaje con ritmo de juego</h2>
         </div>
-        <div className="world-grid">
-          {[featuredWorld, ...extraWorlds].map((world, index) => (
-            <div key={world.id} className="reveal fade-up" data-reveal style={{ '--reveal-delay': `${index * 0.08}s` } as CSSProperties}>
-              <WorldCard
-                {...world}
-                actionLabel={world.actionLabel}
-                onAction={() => navigate(`/world/${world.id}`)}
-              />
-            </div>
-          ))}
-        </div>
+        {isLoading ? (
+          <div className="content-state">Cargando mundos...</div>
+        ) : error ? (
+          <div className="content-state content-state--error">{error}</div>
+        ) : worlds.length > 0 ? (
+          <div className="world-grid">
+            {[featuredWorld, ...extraWorlds].filter(Boolean).map((world, index) => (
+              <div key={world.id} className="reveal fade-up" data-reveal style={{ '--reveal-delay': `${index * 0.08}s` } as CSSProperties}>
+                <WorldCard
+                  {...world}
+                  actionLabel={world.actionLabel}
+                  onAction={() => navigate(`/world/${world.id}`)}
+                />
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="content-state">No hay mundos activos en la API.</div>
+        )}
       </div>
     </div>
 
@@ -128,6 +136,52 @@ export const Landing = () => {
         <div className="mode-card">
           <strong>Ruta por temas</strong>
           <span>Avanza por mundos y desbloquea guias.</span>
+        </div>
+      </div>
+    </div>
+
+    <div className="pricing-section reveal fade-up" data-reveal>
+      <div className="container section-block">
+        <div className="section-heading section-heading--center">
+          <span className="eyebrow">Planes simples</span>
+          <h2>Gratis para empezar, premium para explorar todo</h2>
+          <p>
+            Elige un plan cuando quieras desbloquear mundos premium, perfiles familiares y
+            progreso completo.
+          </p>
+        </div>
+
+        <div className="plans-grid plans-grid--preview">
+          {SUBSCRIPTION_PLANS.map((plan) => (
+            <article
+              key={plan.type}
+              className={`plan-card plan-card--preview ${plan.popular ? 'plan-card--popular' : ''}`}
+            >
+              <div className="plan-card__header">
+                <h3>{plan.name}</h3>
+                <p className="plan-card__description">{plan.description}</p>
+              </div>
+
+              <div className="plan-card__pricing">
+                <span className="plan-card__price">${(plan.price / 100).toFixed(2)}</span>
+                <span className="plan-card__interval">
+                  /{plan.interval === 'year' ? 'anio' : 'mes'}
+                </span>
+              </div>
+
+              <ul className="plan-card__features">
+                {plan.features.slice(0, 4).map((feature) => (
+                  <li key={feature}>✓ {feature}</li>
+                ))}
+              </ul>
+            </article>
+          ))}
+        </div>
+
+        <div className="pricing-section__cta">
+          <Link to="/subscribe" className="btn btn-primary btn-lg">
+            Ver todos los planes
+          </Link>
         </div>
       </div>
     </div>

@@ -19,12 +19,15 @@ export class MemoGame extends Scene {
 
   init(data: { levelData: any }) {
     this.levelData = data.levelData;
+    this.cards = [];
     this.matches = 0;
     this.moves = 0;
+    this.score = 0;
     this.timeRemaining = this.levelData.timeLimit || 60;
     this.selectedCards = [];
     this.canSelect = true;
     this.isLevelComplete = false;
+    this.input.enabled = true;
   }
 
   create() {
@@ -113,13 +116,18 @@ export class MemoGame extends Scene {
         const y = startY + r * (cardH + gap);
 
         const value = values[index] ?? index;
+        const sourceCards = this.levelData.data?.cards ?? this.levelData.cards ?? [];
+        const cardDefinition = sourceCards[value] ?? null;
+        const cardLabel = cardDefinition?.label ?? String(value + 1);
         const faceColor = palette[value % palette.length];
 
         const rect = this.add.rectangle(0, 0, cardW, cardH, 0x6C3CE1).setStrokeStyle(4, 0xffffff);
-        const label = this.add.text(0, 0, String(value + 1), {
+        const label = this.add.text(0, 0, cardLabel, {
           fontFamily: 'Nunito',
-          fontSize: `${Math.floor(cardH * 0.35)}px`,
-          color: '#ffffff'
+          fontSize: `${Math.max(18, Math.floor(cardH * 0.2))}px`,
+          color: '#ffffff',
+          align: 'center',
+          wordWrap: { width: cardW - 14 },
         }).setOrigin(0.5).setVisible(false);
 
         const card = this.add.container(x, y, [rect, label]);
@@ -283,9 +291,5 @@ export class MemoGame extends Scene {
     if (!win) {
       EventBus.emit(GameEvents.GAME_OVER);
     }
-
-    this.time.delayedCall(250, () => {
-      this.scene.start('GameOver', { win, stars });
-    });
   }
 }

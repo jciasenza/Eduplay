@@ -1,11 +1,24 @@
 import { useNavigate, useParams } from 'react-router-dom';
-import { learningWorlds } from '../data/worlds';
+import { useLearningWorlds } from '../hooks/useLearningWorlds';
+import { useScrollReveal } from '../hooks/useScrollReveal';
 
 export const GameLobby = () => {
   const navigate = useNavigate();
   const { worldId, gameId } = useParams<{ worldId: string; gameId: string }>();
-  const activeWorld = learningWorlds.find((world) => world.id === worldId);
+  const { worlds, isLoading } = useLearningWorlds();
+  const activeWorld = worlds.find((world) => world.id === worldId);
   const activeGame = activeWorld?.games.find((game) => game.id === gameId);
+  useScrollReveal([activeWorld?.id, activeGame?.id]);
+
+  if (isLoading) {
+    return (
+      <section className="game-page">
+        <div className="container game-page__inner">
+          <div className="game-loading">Cargando juego...</div>
+        </div>
+      </section>
+    );
+  }
 
   if (!activeWorld || !activeGame) {
     return (

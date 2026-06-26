@@ -15,12 +15,21 @@ export const Header = () => {
               <NavLink to="/dashboard" className="btn btn-ghost btn-sm">
                 Panel
               </NavLink>
+              <NavLink to="/account" className="btn btn-ghost btn-sm">
+                Cuenta
+              </NavLink>
+              <NavLink to="/subscribe" className="btn btn-ghost btn-sm">
+                Planes
+              </NavLink>
               <button onClick={signOut} className="btn btn-outline btn-sm">
                 Salir
               </button>
             </>
           ) : (
             <>
+              <NavLink to="/subscribe" className="btn btn-ghost btn-sm">
+                Planes
+              </NavLink>
               <NavLink to="/login" className="btn btn-ghost btn-sm">
                 Ingresar
               </NavLink>

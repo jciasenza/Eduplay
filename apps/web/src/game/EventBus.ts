@@ -8,6 +8,8 @@ export const GameEvents = {
   GAME_READY: 'game-ready',
   LEVEL_COMPLETE: 'level-complete',
   GAME_OVER: 'game-over',
+  NEXT_LEVEL: 'next-level',
+  EXIT_GAME: 'exit-game',
   UPDATE_SCORE: 'update-score',
   UPDATE_MOVES: 'update-moves',
   UPDATE_TIME: 'update-time',

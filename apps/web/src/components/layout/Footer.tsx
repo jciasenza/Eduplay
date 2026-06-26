@@ -1,3 +1,5 @@
+import { Link } from 'react-router-dom';
+import { APP_VERSION } from '@aventuras/shared';
 import { BrandLogo } from '../brand/BrandLogo';
 
 export const Footer = () => (
@@ -5,15 +7,16 @@ export const Footer = () => (
     <div className="container site-footer__inner">
       <BrandLogo compact />
       <div className="site-footer__links">
-        <a href="#terms" target="_blank" rel="noreferrer">
+        <Link to="/terms">
           Condiciones de Servicio
-        </a>
-        <a href="#privacy" target="_blank" rel="noreferrer">
+        </Link>
+        <Link to="/privacy">
           Politica de Privacidad
-        </a>
-        <a href="#contacto">Contacto</a>
+        </Link>
+        <Link to="/contact">Contacto</Link>
+        <Link to="/about">Acerca de</Link>
       </div>
-      <p>©2026 CureSoft. Todos los derechos reservados.</p>
+      <p>©2026 CureSoft. v{APP_VERSION}. Todos los derechos reservados.</p>
     </div>
   </footer>
 );

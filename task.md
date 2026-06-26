@@ -1,4 +1,4 @@
-# 🎮 Aventuras del Saber — Task Tracker
+# 🎮 EduPlay — Task Tracker
 
 ## FASE 1 — Foundation (Semana 1)
 
@@ -20,8 +20,8 @@
 - [x] Configurar Prisma + schema completo
 - [x] Seed de datos iniciales (mundos + niveles)
 - [x] Módulo Auth (Supabase strategy)
-- [ ] Módulo Game (levels, progress, sessions)
-- [ ] Módulo Users (CRUD children profiles)
+- [x] Módulo Game (levels, progress, sessions)
+- [x] Módulo Users (CRUD children profiles)
 - [ ] Guards (auth, roles, subscription)
 
 ### Auth (Supabase)
@@ -37,11 +37,11 @@
 - [/] Escenas Phaser: Boot → Preloader → MainMenu → MemoGame → GameOver
 - [/] Integrar Phaser.js en React (bridge pattern)
 - [ ] Mecánica Memotest (flip, match, timer, estrellas)
-- [ ] LevelManager (data-driven desde API)
-- [ ] Guardar progreso
+- [/] LevelManager (data-driven desde API)
+- [/] Guardar progreso
 - [ ] 10 niveles gratis (Mundo Matemáticas)
 - [ ] 10 niveles premium (Mundo Palabras)
-- [ ] Sistema de mundos y selección de nivel
+- [/] Sistema de mundos y selección de nivel
 - [ ] Sonidos y música
 
 ## FASE 3 — Monetización + Admin (Semana 3)

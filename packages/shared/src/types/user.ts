@@ -2,11 +2,13 @@
 // User Types
 // ============================================
 
-export enum Role {
-  PARENT = 'PARENT',
-  CHILD = 'CHILD',
-  ADMIN = 'ADMIN',
-}
+export const Role = {
+  PARENT: 'PARENT',
+  CHILD: 'CHILD',
+  ADMIN: 'ADMIN',
+} as const;
+
+export type Role = (typeof Role)[keyof typeof Role];
 
 export interface User {
   id: string;
