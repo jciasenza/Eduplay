@@ -4,109 +4,102 @@ import {
   Body,
   Headers,
   Logger,
-  Req,
-  BadRequestException,
+  Get,
+  UseGuards,
+  Request,
+  HttpCode,
+  HttpStatus,
 } from '@nestjs/common';
-import type { RawBodyRequest } from '@nestjs/common';
+import type { PlanType } from '@aventuras/shared';
 import { PaymentsService } from './payments.service';
+import { SupabaseAuthGuard } from '../auth/guards/supabase-auth.guard';
+import { UsersService } from '../users/users.service';
+
+interface CreateMpSubscriptionBody {
+  planType: PlanType;
+  backUrl: string;
+}
+
+interface SyncMpPaymentBody {
+  paymentId: string;
+}
 
 @Controller('payments')
 export class PaymentsController {
   private logger = new Logger('PaymentsController');
 
-  constructor(private paymentsService: PaymentsService) {}
+  constructor(
+    private paymentsService: PaymentsService,
+    private usersService: UsersService,
+  ) {}
 
   /**
-   * Create a checkout session
-   * POST /payments/create-checkout-session
+   * Obtener el estado de suscripción del usuario actual
+   * GET /api/payments/subscription
    */
-  @Post('create-checkout-session')
-  async createCheckoutSession(
-    @Body()
-    body: {
-      priceId: string;
-      userId: string;
-      successUrl: string;
-      cancelUrl: string;
-    },
+  @Get('subscription')
+  @UseGuards(SupabaseAuthGuard)
+  async getSubscription(@Request() req: any) {
+    const userId = req.user?.userId;
+    return this.paymentsService.getSubscriptionByUserId(userId);
+  }
+
+  // ─── MERCADO PAGO ─────────────────────────────────────────────────────────────
+
+  /**
+   * Crear suscripción con Mercado Pago (para usuarios LATAM)
+   * POST /api/payments/mp/subscribe
+   *
+   * Body: { planType: string, backUrl: string }
+   */
+  @Post('mp/subscribe')
+  @UseGuards(SupabaseAuthGuard)
+  async createMercadoPagoSubscription(
+    @Request() req: any,
+    @Body() body: CreateMpSubscriptionBody,
   ) {
-    try {
-      return await this.paymentsService.createCheckoutSession(
-        body.priceId,
-        body.userId,
-        body.successUrl,
-        body.cancelUrl,
-      );
-    } catch (error) {
-      this.logger.error('Error in createCheckoutSession:', error);
-      throw error;
-    }
+    const user = await this.usersService.getOrCreateUser(req.user, {});
+    return this.paymentsService.createMercadoPagoSubscription({
+      userId: user.id,
+      planType: body.planType,
+      payerEmail: user.email,
+      backUrl: body.backUrl,
+    });
   }
 
   /**
-   * Create a billing portal session
-   * POST /payments/create-portal-session
+   * Webhook de Mercado Pago (IPN — Instant Payment Notification)
+   * POST /api/payments/mp/webhook
+   *
+   * MP envía: query params ?topic=preapproval&id=RESOURCE_ID
+   * No requiere autenticación (se valida por secreto de URL configurado en MP)
    */
-  @Post('create-portal-session')
-  async createBillingPortalSession(
-    @Body() body: { customerId: string; returnUrl: string },
+  @Post('mp/webhook')
+  @HttpCode(HttpStatus.OK)
+  async handleMercadoPagoWebhook(
+    @Body() body: any,
+    @Headers('x-signature') signature: string,
   ) {
-    try {
-      return await this.paymentsService.createBillingPortalSession(
-        body.customerId,
-        body.returnUrl,
-      );
-    } catch (error) {
-      this.logger.error('Error in createBillingPortalSession:', error);
-      throw error;
-    }
-  }
+    const topic = body?.type ?? body?.topic ?? '';
+    const resourceId = body?.data?.id ?? body?.id ?? '';
 
-  /**
-   * Webhook endpoint for Stripe events
-   * POST /payments/webhook
-   */
-  @Post('webhook')
-  async handleWebhook(
-    @Req() req: RawBodyRequest<any>,
-    @Headers('stripe-signature') signature: string,
-  ) {
-    const body = req.rawBody;
-    if (!body || !signature) {
-      throw new BadRequestException('Missing Stripe webhook body or signature');
-    }
+    this.logger.log(`Webhook MP recibido: topic=${topic}, id=${resourceId}`);
 
-    try {
-      const event = this.paymentsService.verifyWebhookEvent(body, signature);
-      this.logger.log(`Received webhook event: ${event.type}`);
-
-      switch (event.type) {
-        case 'checkout.session.completed':
-          await this.paymentsService.handleCheckoutSessionCompleted(
-            event.data.object as any,
-          );
-          break;
-        case 'invoice.paid':
-          await this.paymentsService.handleInvoicePaid(event.data.object as any);
-          break;
-        case 'customer.subscription.updated':
-          await this.paymentsService.handleSubscriptionUpdated(
-            event.data.object as any,
-          );
-          break;
-        case 'customer.subscription.deleted':
-          await this.paymentsService.handleSubscriptionDeleted(
-            event.data.object as any,
-          );
-          break;
-        default:
-          this.logger.log(`Unhandled event type: ${event.type}`);
-      }
-
+    if (!topic || !resourceId) {
       return { received: true };
-    } catch (error) {
-      this.logger.error('Webhook error:', error);
-      throw error;
     }
+
+    await this.paymentsService.handleMercadoPagoWebhook(topic, resourceId);
+    return { received: true };
+  }
+
+  /**
+   * Sincronizar manualmente un pago aprobado de Mercado Pago.
+   * Útil para que la pantalla de éxito pueda confirmar el pago en local.
+   */
+  @Post('mp/sync')
+  @UseGuards(SupabaseAuthGuard)
+  async syncMercadoPagoPayment(@Body() body: SyncMpPaymentBody) {
+    return this.paymentsService.syncMercadoPagoPayment(body.paymentId);
   }
 }

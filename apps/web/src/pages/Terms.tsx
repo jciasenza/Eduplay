@@ -12,7 +12,7 @@ export const Terms = () => {
           <h1>Terminos de uso de EduPlay</h1>
           <p>
             Estas condiciones describen las reglas basicas para usar la plataforma educativa
-            Aventuras del Saber / EduPlay.
+            EduPlay.
           </p>
         </div>
 
@@ -35,9 +35,7 @@ export const Terms = () => {
 
           <h2>3. Suscripciones</h2>
           <p>
-            Los planes premium desbloquean mundos, niveles y funciones adicionales. La facturacion,
-            los cambios de plan y las cancelaciones se administran mediante el portal seguro de
-            Stripe cuando la integracion este activa para la cuenta.
+            Los planes premium desbloquean mundos, niveles y funciones adicionales. Los pagos son procesados de forma segura a través de Mercado Pago.
           </p>
 
           <h2>4. Contenido educativo</h2>

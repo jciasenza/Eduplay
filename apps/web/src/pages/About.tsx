@@ -42,7 +42,7 @@ export const About = () => {
             <ul className="about-list">
               <li>Mundos de matematicas, palabras, ciencias, historia y logica.</li>
               <li>Panel familiar para administrar perfiles y suscripcion.</li>
-              <li>Integracion preparada para Stripe y Supabase.</li>
+              <li>Integracion preparada para Mercado Pago y Supabase.</li>
               <li>Formulario de contacto y paginas legales basicas.</li>
             </ul>
           </article>

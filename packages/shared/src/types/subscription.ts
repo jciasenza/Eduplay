@@ -24,8 +24,8 @@ export type PlanType = (typeof PlanType)[keyof typeof PlanType];
 export interface Subscription {
   id: string;
   userId: string;
-  stripeCustomerId: string | null;
-  stripeSubscriptionId: string | null;
+  providerCustomerId: string | null;
+  providerSubscriptionId: string | null;
   status: SubscriptionStatus;
   plan: PlanType | null;
   currentPeriodStart: string | null;
@@ -40,6 +40,6 @@ export interface SubscriptionPlan {
   price: number; // USD cents
   interval: 'month' | 'year';
   features: string[];
-  stripePriceId: string;
+  externalPlanId: string;
   popular?: boolean;
 }

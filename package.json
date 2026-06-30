@@ -1,9 +1,9 @@
 {
-  "name": "aventuras-del-saber",
-  "version": "0.1.0",
+  "name": "eduplay",
+  "version": "1.0.0",
   "private": true,
   "packageManager": "npm@10.8.2",
-  "description": "Plataforma SaaS de juegos educativos para niños - Aventuras del Saber",
+  "description": "Plataforma SaaS de juegos educativos para niños - EduPlay",
   "workspaces": [
     "packages/*",
     "apps/*"

@@ -1,161 +1,238 @@
 import { Injectable, Logger, BadRequestException } from '@nestjs/common';
-import Stripe from 'stripe';
+import { PrismaService } from '../prisma/prisma.service';
+import { SUBSCRIPTION_PLANS, PlanType } from '@aventuras/shared';
+import { PaymentProvider, SubscriptionStatus, SubscriptionPlan } from '@prisma/client';
+import { MercadoPagoProvider } from './providers/mercado-pago.provider';
 
+/**
+ * PaymentsService — maneja el flujo de Mercado Pago para suscripciones.
+ */
 @Injectable()
 export class PaymentsService {
-  private stripe: Stripe;
   private logger = new Logger('PaymentsService');
 
-  constructor() {
-    if (!process.env.STRIPE_SECRET_KEY) {
-      this.logger.warn('STRIPE_SECRET_KEY not found in environment variables');
+  constructor(
+    private prisma: PrismaService,
+    private readonly mercadoPagoProvider: MercadoPagoProvider,
+  ) {}
+
+  // ─── MERCADO PAGO ─────────────────────────────────────────────────────────────
+
+  /**
+   * Crea una Preference de Mercado Pago para redirigir al checkout.
+   * No usa PLAN_ID ni planes preaprobados: cada compra genera una preference nueva.
+   */
+  async createMercadoPagoSubscription(params: {
+    userId: string;
+    planType: PlanType;
+    payerEmail: string;
+    backUrl: string; // URL de retorno después del pago
+  }) {
+    const { userId, planType, payerEmail, backUrl } = params;
+    const subscriptionPlan = SUBSCRIPTION_PLANS.find((plan) => plan.type === planType);
+
+    if (!subscriptionPlan) {
+      throw new BadRequestException('Plan de suscripción inválido');
     }
-    this.stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
-      apiVersion: '2022-11-15' as any,
+
+    const webhookBaseUrl = process.env.MP_WEBHOOK_URL?.trim();
+    const defaultWebhookUrl = `http://localhost:${process.env.PORT ?? 3001}/api/payments/mp/webhook`;
+    const notificationUrl = webhookBaseUrl || defaultWebhookUrl;
+    const planLabelMap: Record<PlanType, string> = {
+      monthly: 'EduPlay Explorador Mensual',
+      yearly: 'EduPlay Explorador Anual',
+      family: 'EduPlay Familia',
+    };
+    const unitPrice = Number((subscriptionPlan.price / 100).toFixed(2));
+    const { preferenceId, checkoutUrl } = await this.mercadoPagoProvider.createCheckout({
+      userId,
+      planType,
+      payerEmail,
+      successUrl: backUrl,
+      cancelUrl: backUrl,
+      title: planLabelMap[planType],
+      unitPrice,
+      currencyId: process.env.MP_CURRENCY_ID?.trim() || 'ARS',
+      notificationUrl,
+    });
+
+    await this.prisma.subscription.upsert({
+      where: { userId },
+      create: {
+        userId,
+        provider: PaymentProvider.MERCADO_PAGO,
+        mpSubscriptionId: null,
+        mpPreapprovalPlanId: planType,
+        status: SubscriptionStatus.FREE, // Se actualizará via webhook cuando el pago se confirme
+        plan: subscriptionPlan.interval === 'year' ? SubscriptionPlan.ANNUAL : SubscriptionPlan.MONTHLY,
+      },
+      update: {
+        provider: PaymentProvider.MERCADO_PAGO,
+        mpSubscriptionId: null,
+        mpPreapprovalPlanId: planType,
+        plan: subscriptionPlan.interval === 'year' ? SubscriptionPlan.ANNUAL : SubscriptionPlan.MONTHLY,
+      },
+    });
+
+    return {
+      preferenceId,
+      checkoutUrl,
+      status: 'pending',
+    };
+  }
+
+  /**
+   * Procesa un webhook de Mercado Pago.
+   * MP envía notificaciones de tipo IPN (Instant Payment Notification).
+   *
+   * Docs: https://www.mercadopago.com.ar/developers/es/docs/subscriptions/additional-content/notifications
+   */
+  async handleMercadoPagoWebhook(topic: string, resourceId: string) {
+    // Verificar idempotencia
+    const existing = await this.prisma.webhookEvent.findUnique({
+      where: {
+        provider_externalId: {
+          provider: PaymentProvider.MERCADO_PAGO,
+          externalId: resourceId,
+        },
+      },
+    });
+
+    if (existing?.processed) {
+      this.logger.log(`Webhook MP ya procesado: ${resourceId}`);
+      return;
+    }
+
+    // Registrar el evento
+    await this.prisma.webhookEvent.upsert({
+      where: {
+        provider_externalId: {
+          provider: PaymentProvider.MERCADO_PAGO,
+          externalId: resourceId,
+        },
+      },
+      create: {
+        provider: PaymentProvider.MERCADO_PAGO,
+        externalId: resourceId,
+        type: topic,
+        processed: false,
+      },
+      update: { type: topic },
+    });
+
+    // Obtener detalle del recurso desde la API de MP
+    if (topic === 'payment') {
+      await this.syncMercadoPagoPayment(resourceId);
+    }
+
+    // Marcar como procesado
+    await this.prisma.webhookEvent.update({
+      where: {
+        provider_externalId: {
+          provider: PaymentProvider.MERCADO_PAGO,
+          externalId: resourceId,
+        },
+      },
+      data: { processed: true },
     });
   }
 
-  /**
-   * Create a checkout session for subscription or one-time payment
-   */
-  async createCheckoutSession(
-    priceId: string,
-    userId: string,
-    successUrl: string,
-    cancelUrl: string,
-  ) {
-    try {
-      if (!priceId) {
-        throw new BadRequestException('priceId is required');
-      }
+  private async updateSubscriptionFromMercadoPago(payment: any) {
+    const statusMap: Record<string, SubscriptionStatus> = {
+      approved: SubscriptionStatus.ACTIVE,
+      paid: SubscriptionStatus.ACTIVE,
+      in_process: SubscriptionStatus.PAST_DUE,
+      pending: SubscriptionStatus.FREE,
+      rejected: SubscriptionStatus.CANCELLED,
+      cancelled: SubscriptionStatus.CANCELLED,
+      refunded: SubscriptionStatus.CANCELLED,
+      charged_back: SubscriptionStatus.CANCELLED,
+    };
 
-      const session = await this.stripe.checkout.sessions.create({
-        mode: 'subscription',
-        payment_method_types: ['card'],
-        line_items: [
-          {
-            price: priceId,
-            quantity: 1,
-          },
-        ],
-        success_url: successUrl,
-        cancel_url: cancelUrl,
-        client_reference_id: userId,
-        metadata: {
-          userId,
-        },
-      });
+    const newStatus = statusMap[payment.status] ?? SubscriptionStatus.FREE;
+    const rawReference = String(payment.external_reference ?? '');
+    const [referenceUserId, referencePlanType] = rawReference.split(':');
+    const userId = String(payment.metadata?.userId ?? referenceUserId ?? '').trim();
+    const planType = String(payment.metadata?.planType ?? referencePlanType ?? '').trim() as PlanType;
+    const subscriptionPlan = SUBSCRIPTION_PLANS.find((plan) => plan.type === planType);
 
-      return { sessionId: session.id, checkoutUrl: session.url };
-    } catch (error) {
-      this.logger.error('Error creating checkout session:', error);
-      throw error;
+    if (!userId) {
+      this.logger.warn(`Pago MP sin userId para el pago ${payment.id}`);
+      return;
     }
-  }
 
-  /**
-   * Create a billing portal session
-   */
-  async createBillingPortalSession(customerId: string, returnUrl: string) {
-    try {
-      if (!customerId) {
-        throw new BadRequestException('customerId is required');
-      }
-
-      const portalSession = await this.stripe.billingPortal.sessions.create({
-        customer: customerId,
-        return_url: returnUrl,
-      });
-
-      return { portalUrl: portalSession.url };
-    } catch (error) {
-      this.logger.error('Error creating billing portal session:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * Verify webhook signature and return event
-   */
-  verifyWebhookEvent(body: Buffer, signature: string) {
-    try {
-      const event = this.stripe.webhooks.constructEvent(
-        body,
-        signature,
-        process.env.STRIPE_WEBHOOK_SECRET || '',
-      );
-      return event;
-    } catch (error) {
-      this.logger.error('Webhook signature verification failed:', error);
-      throw new BadRequestException('Invalid webhook signature');
-    }
-  }
-
-  /**
-   * Handle checkout session completed event
-   */
-  async handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) {
-    this.logger.log(
-      `Checkout session completed: ${session.id}`,
-      JSON.stringify({
-        clientRefId: session.client_reference_id,
-        customerId: session.customer,
-        subscriptionId: session.subscription,
-      }),
+    const paidAt = payment.date_approved ? new Date(payment.date_approved) : new Date();
+    const currentPeriodStart = paidAt;
+    const currentPeriodEnd = new Date(paidAt);
+    currentPeriodEnd.setDate(
+      currentPeriodEnd.getDate() + (subscriptionPlan?.interval === 'year' ? 365 : 30),
     );
 
-    // TODO: Update user subscription status in database
-    // const userId = session.client_reference_id;
-    // const stripeCustomerId = session.customer;
-    // const stripeSubscriptionId = session.subscription;
-    //
-    // await prisma.user.update({
-    //   where: { id: userId },
-    //   data: {
-    //     stripeCustomerId: stripeCustomerId as string,
-    //     stripeSubscriptionId: stripeSubscriptionId as string,
-    //     subscriptionStatus: 'active',
-    //   },
-    // });
+    await this.prisma.subscription.upsert({
+      where: { userId },
+      create: {
+        userId,
+        provider: PaymentProvider.MERCADO_PAGO,
+        mpCustomerId: String(payment.payer?.id ?? payment.customer_id ?? payment.card?.id ?? ''),
+        mpSubscriptionId: String(payment.id ?? ''),
+        mpPreapprovalPlanId: planType || null,
+        status: newStatus,
+        plan:
+          subscriptionPlan?.interval === 'year' ? SubscriptionPlan.ANNUAL : SubscriptionPlan.MONTHLY,
+        currentPeriodStart: newStatus === SubscriptionStatus.ACTIVE ? currentPeriodStart : null,
+        currentPeriodEnd: newStatus === SubscriptionStatus.ACTIVE ? currentPeriodEnd : null,
+        cancelAtPeriodEnd: false,
+      },
+      update: {
+        provider: PaymentProvider.MERCADO_PAGO,
+        mpCustomerId: String(payment.payer?.id ?? payment.customer_id ?? payment.card?.id ?? ''),
+        mpSubscriptionId: String(payment.id ?? ''),
+        mpPreapprovalPlanId: planType || null,
+        status: newStatus,
+        plan:
+          subscriptionPlan?.interval === 'year' ? SubscriptionPlan.ANNUAL : SubscriptionPlan.MONTHLY,
+        currentPeriodStart: newStatus === SubscriptionStatus.ACTIVE ? currentPeriodStart : null,
+        currentPeriodEnd: newStatus === SubscriptionStatus.ACTIVE ? currentPeriodEnd : null,
+        cancelAtPeriodEnd: false,
+      },
+    });
+
+    this.logger.log(`Pago MP procesado: ${payment.id} → ${newStatus}`);
   }
 
-  /**
-   * Handle invoice paid event
-   */
-  async handleInvoicePaid(invoice: Stripe.Invoice) {
-    this.logger.log(
-      `Invoice paid: ${invoice.id}`,
-      JSON.stringify({
-        customerId: invoice.customer,
-        subscriptionId: invoice.subscription,
-        amount: invoice.amount_paid,
-      }),
-    );
+  async syncMercadoPagoPayment(paymentId: string) {
+    const mpAccessToken = process.env.MP_ACCESS_TOKEN?.trim();
+    if (!mpAccessToken) {
+      throw new BadRequestException('Mercado Pago no está configurado');
+    }
 
-    // TODO: Update invoice/subscription records
+    const response = await fetch(`https://api.mercadopago.com/v1/payments/${paymentId}`, {
+      headers: { Authorization: `Bearer ${mpAccessToken}` },
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      this.logger.error(`Error consultando pago de Mercado Pago ${paymentId}: ${errorText}`);
+      throw new BadRequestException('No se pudo sincronizar el pago con Mercado Pago');
+    }
+
+    const payment = await response.json();
+    await this.updateSubscriptionFromMercadoPago(payment);
+
+    return {
+      paymentId,
+      status: payment.status,
+    };
   }
 
-  /**
-   * Handle subscription updated event
-   */
-  async handleSubscriptionUpdated(subscription: Stripe.Subscription) {
-    this.logger.log(
-      `Subscription updated: ${subscription.id}`,
-      JSON.stringify({
-        customerId: subscription.customer,
-        status: subscription.status,
-      }),
-    );
+  // ─── ESTADO DE SUSCRIPCIÓN ────────────────────────────────────────────────────
 
-    // TODO: Update subscription status in database
+  async getSubscriptionByUserId(userId: string) {
+    return this.prisma.subscription.findUnique({ where: { userId } });
   }
 
-  /**
-   * Handle subscription deleted event
-   */
-  async handleSubscriptionDeleted(subscription: Stripe.Subscription) {
-    this.logger.log(`Subscription deleted: ${subscription.id}`);
-
-    // TODO: Update subscription status to cancelled
+  async isUserPremium(userId: string): Promise<boolean> {
+    const sub = await this.getSubscriptionByUserId(userId);
+    return sub?.status === SubscriptionStatus.ACTIVE;
   }
 }

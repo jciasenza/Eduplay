@@ -33,7 +33,7 @@ export const Privacy = () => {
 
           <h2>3. Pagos</h2>
           <p>
-            Los pagos se procesan mediante Stripe. EduPlay no almacena numeros completos de tarjeta.
+            Los pagos se procesan mediante Mercado Pago. EduPlay no almacena numeros completos de tarjeta.
             Conservamos identificadores de cliente o suscripcion necesarios para administrar el plan.
           </p>
 

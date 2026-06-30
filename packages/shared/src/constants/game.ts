@@ -1,4 +1,4 @@
-import { Difficulty } from '../types/game';
+import { Difficulty } from '../types/game.js';
 
 export const GAME_CATEGORIES = [
   { id: 'math', name: 'Matemáticas', icon: '🔢' },

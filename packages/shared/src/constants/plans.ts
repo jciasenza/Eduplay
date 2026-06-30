@@ -1,18 +1,18 @@
-import { PlanType } from '../types/subscription';
-import type { SubscriptionPlan } from '../types/subscription';
+import { PlanType } from '../types/subscription.js';
+import type { SubscriptionPlan } from '../types/subscription.js';
 
 /**
  * Subscription plan definitions.
- * stripePriceId will be populated once Stripe products are created.
+ * External payment identifiers can be configured later if needed.
  */
 export const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
   {
     type: PlanType.MONTHLY,
     name: 'Explorador',
     description: 'Acceso completo a todos los mundos y niveles',
-    price: 499, // USD $4.99
+    price: 499999,
     interval: 'month',
-    stripePriceId: '', // Set from Stripe dashboard
+    externalPlanId: '',
     features: [
       'Todos los mundos desbloqueados',
       'Niveles ilimitados',
@@ -26,9 +26,9 @@ export const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
     type: PlanType.YEARLY,
     name: 'Explorador Anual',
     description: 'Ahorrá 40% con el plan anual',
-    price: 3599, // USD $35.99 ($2.99/mes)
+    price: 3599999,
     interval: 'year',
-    stripePriceId: '',
+    externalPlanId: '',
     popular: true,
     features: [
       'Todo lo del plan mensual',
@@ -41,9 +41,9 @@ export const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
     type: PlanType.FAMILY,
     name: 'Familia',
     description: 'Hasta 4 perfiles de niños',
-    price: 699, // USD $6.99
+    price: 699999,
     interval: 'month',
-    stripePriceId: '',
+    externalPlanId: '',
     features: [
       'Todo lo del plan Explorador',
       'Hasta 4 perfiles de niños',

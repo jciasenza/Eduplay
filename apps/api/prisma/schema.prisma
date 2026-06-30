@@ -21,6 +21,18 @@ enum SubscriptionStatus {
   EXPIRED
 }
 
+enum SubscriptionPlan {
+  FREE
+  MONTHLY
+  ANNUAL
+}
+
+// Qué procesador de pago se usó
+enum PaymentProvider {
+  MERCADO_PAGO  // Para Argentina/LATAM
+  LEMON_SQUEEZY // Para el resto del mundo
+}
+
 enum Difficulty {
   EASY
   MEDIUM
@@ -129,17 +141,32 @@ model GameSession {
   @@map("game_sessions")
 }
 
+// ─── SUSCRIPCIONES ─────────────────────────────────────────────────────────────
+// Modelo agnóstico al proveedor de pago.
 model Subscription {
   id                  String             @id @default(uuid())
   userId              String             @unique @map("user_id")
-  stripeCustomerId    String?            @unique @map("stripe_customer_id")
-  stripeSubscriptionId String?           @unique @map("stripe_subscription_id")
-  stripePriceId       String?            @map("stripe_price_id")
+
+  // Qué proveedor se utilizó (null = plan FREE, sin proveedor)
+  provider            PaymentProvider?
+
+  // IDs del proveedor — Mercado Pago
+  mpCustomerId        String?            @unique @map("mp_customer_id")
+  mpSubscriptionId    String?            @unique @map("mp_subscription_id")
+  mpPreapprovalPlanId String?            @map("mp_preapproval_plan_id")  // ID del plan en MP
+
+  // IDs del proveedor externos
+  lsCustomerId        String?            @unique @map("ls_customer_id")
+  lsSubscriptionId    String?            @unique @map("ls_subscription_id")
+  lsVariantId         String?            @map("ls_variant_id")           // Equivalente al Price ID
+
+  // Estado y plan
   status              SubscriptionStatus @default(FREE)
-  plan                String?
+  plan                SubscriptionPlan   @default(FREE)
   currentPeriodStart  DateTime?          @map("current_period_start")
   currentPeriodEnd    DateTime?          @map("current_period_end")
   cancelAtPeriodEnd   Boolean            @default(false) @map("cancel_at_period_end")
+  
   createdAt           DateTime           @default(now()) @map("created_at")
   updatedAt           DateTime           @updatedAt @map("updated_at")
   
@@ -148,12 +175,17 @@ model Subscription {
   @@map("subscriptions")
 }
 
+// ─── WEBHOOKS ──────────────────────────────────────────────────────────────────
+// Idempotency: registramos los eventos recibidos de cada proveedor para no procesarlos dos veces.
 model WebhookEvent {
-  id          String   @id @default(uuid())
-  stripeEventId String @unique @map("stripe_event_id")
-  type        String
-  processed   Boolean  @default(false)
-  createdAt   DateTime @default(now()) @map("created_at")
+  id          String          @id @default(uuid())
+  provider    PaymentProvider
+  externalId  String          @map("external_id")  // ID único del evento en el proveedor
+  type        String                                // e.g. "subscription_preapproval" / "subscription_updated"
+  processed   Boolean         @default(false)
+  payload     Json?                                 // Cuerpo completo del evento (útil para debugging)
+  createdAt   DateTime        @default(now()) @map("created_at")
   
+  @@unique([provider, externalId])
   @@map("webhook_events")
 }

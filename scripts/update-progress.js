@@ -22,7 +22,7 @@ if (!msg) {
 const date = new Date().toLocaleString('es-ES');
 let header = '';
 if (!fs.existsSync(progressPath)) {
-  header = `# Documentación de progreso de Aventuras del Saber\n\n`; 
+  header = `# Documentación de progreso de EduPlay\n\n`;
   fs.writeFileSync(progressPath, header, 'utf8');
 }
 

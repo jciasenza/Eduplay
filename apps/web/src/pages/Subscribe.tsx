@@ -1,20 +1,18 @@
 import { useNavigate } from 'react-router-dom';
 import { SUBSCRIPTION_PLANS } from '@aventuras/shared';
 import { CheckoutButton } from '../components/payments/CheckoutButton';
-import { useAuth } from '../hooks/useAuth';
 import { useScrollReveal } from '../hooks/useScrollReveal';
-
-const stripePriceIds = {
-  monthly: import.meta.env.VITE_STRIPE_PRICE_MONTHLY || '',
-  yearly: import.meta.env.VITE_STRIPE_PRICE_YEARLY || '',
-  family: import.meta.env.VITE_STRIPE_PRICE_FAMILY || '',
-};
 
 export const Subscribe = () => {
   const navigate = useNavigate();
-  const user = useAuth((state) => state.user);
-  const userId = user?.id ?? 'guest';
   useScrollReveal();
+  const currencyId = import.meta.env.VITE_MP_CURRENCY_ID || 'ARS';
+  const formatPrice = (priceInCents: number) =>
+    new Intl.NumberFormat('es-AR', {
+      style: 'currency',
+      currency: currencyId,
+      maximumFractionDigits: 2,
+    }).format(priceInCents / 100);
 
   const handleSuccess = () => {
     navigate('/subscription/success');
@@ -29,13 +27,12 @@ export const Subscribe = () => {
       <div className="container">
         <div className="subscribe-header reveal fade-up" data-reveal>
           <h1>Elige tu plan</h1>
-          <p>Acceso ilimitado a todos los mundos y juegos educativos</p>
+          <p>Acceso ilimitado a todos los mundos y juegos educativos con pago por Mercado Pago.</p>
         </div>
 
         <div className="plans-grid reveal fade-up" data-reveal>
           {SUBSCRIPTION_PLANS.map((plan) => {
-            const priceId = plan.stripePriceId || stripePriceIds[plan.type];
-            const intervalLabel = plan.interval === 'year' ? 'anio' : 'mes';
+            const intervalLabel = plan.interval === 'year' ? 'año' : 'mes';
 
             return (
               <article
@@ -48,7 +45,7 @@ export const Subscribe = () => {
                 </div>
 
                 <div className="plan-card__pricing">
-                  <span className="plan-card__price">${(plan.price / 100).toFixed(2)}</span>
+                  <span className="plan-card__price">{formatPrice(plan.price)}</span>
                   <span className="plan-card__interval">/{intervalLabel}</span>
                 </div>
 
@@ -59,24 +56,12 @@ export const Subscribe = () => {
                 </ul>
 
                 <div className="plan-card__cta">
-                  {priceId ? (
-                    <CheckoutButton
-                      priceId={priceId}
-                      planName={plan.name}
-                      userId={userId}
-                      onSuccess={handleSuccess}
-                      onError={handleError}
-                    />
-                  ) : (
-                    <>
-                      <button className="btn btn-outline" disabled>
-                        Configurar Stripe
-                      </button>
-                      <p className="plan-card__setup-note">
-                        Falta el Price ID de este plan.
-                      </p>
-                    </>
-                  )}
+                  <CheckoutButton
+                    planType={plan.type}
+                    planName={plan.name}
+                    onSuccess={handleSuccess}
+                    onError={handleError}
+                  />
                 </div>
               </article>
             );

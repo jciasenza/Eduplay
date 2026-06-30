@@ -45,7 +45,7 @@
 - [ ] Sonidos y música
 
 ## FASE 3 — Monetización + Admin (Semana 3)
-- [ ] Stripe integration (checkout, portal, webhooks)
+- [ ] Mercado Pago (LATAM) integration (checkout y webhooks)
 - [ ] Subscription guard
 - [ ] Panel admin: dashboard
 - [ ] Panel admin: CRUD niveles
