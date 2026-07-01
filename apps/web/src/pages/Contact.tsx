@@ -1,6 +1,7 @@
 import { type FormEvent, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useScrollReveal } from '../hooks/useScrollReveal';
+import { getApiBaseUrl } from '../lib/api';
 
 const SUPPORT_EMAIL = 'curejuan@hotmail.com';
 
@@ -20,11 +21,7 @@ export const Contact = () => {
     try {
       setStatus('sending');
       setError('');
-      const baseUrl =
-        import.meta.env.VITE_API_BASE_URL ||
-        import.meta.env.VITE_API_URL ||
-        'http://localhost:3000';
-      const response = await fetch(`${baseUrl}/api/contact`, {
+      const response = await fetch(`${getApiBaseUrl()}/api/contact`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

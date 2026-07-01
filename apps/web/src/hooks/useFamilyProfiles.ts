@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { getApiBaseUrl } from '../lib/api';
 import { useAuth } from './useAuth';
 import type { FamilyChildProfile } from '../lib/familyProfiles';
 import {
@@ -13,9 +14,6 @@ interface FamilyAccountResponse {
     familyPackEnabled: boolean;
   } | null;
 }
-
-const getApiBaseUrl = () =>
-  import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
 export const useFamilyProfiles = () => {
   const { session } = useAuth();

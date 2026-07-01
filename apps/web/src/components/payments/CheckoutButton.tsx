@@ -1,6 +1,7 @@
 import type { FC } from 'react';
 import { useState } from 'react';
 import type { PlanType } from '@aventuras/shared';
+import { getApiBaseUrl } from '../../lib/api';
 import { supabase } from '../../lib/supabase';
 
 interface CheckoutButtonProps {
@@ -23,16 +24,11 @@ export const CheckoutButton: FC<CheckoutButtonProps> = ({
       setIsLoading(true);
       setError(null);
 
-      const baseUrl =
-        import.meta.env.VITE_API_BASE_URL ||
-        import.meta.env.VITE_API_URL ||
-        'http://localhost:3000';
-
       // Obtenemos la session de supabase desde el cliente exportado
       const { data: { session } } = await supabase.auth.getSession();
       const accessToken = session?.access_token;
 
-      const response = await fetch(`${baseUrl}/api/payments/mp/subscribe`, {
+      const response = await fetch(`${getApiBaseUrl()}/api/payments/mp/subscribe`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

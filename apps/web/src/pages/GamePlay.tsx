@@ -5,6 +5,7 @@ import { EventBus, GameEvents } from '../game/EventBus';
 import { useLearningWorlds } from '../hooks/useLearningWorlds';
 import { useScrollReveal } from '../hooks/useScrollReveal';
 import { useAuth } from '../hooks/useAuth';
+import { getApiBaseUrl } from '../lib/api';
 
 const GameLoader = React.lazy(() =>
   import('../game/PhaserGame').then((module) => ({ default: module.PhaserGame })),
@@ -35,10 +36,6 @@ export const GamePlay = () => {
   });
   const { worlds, isLoading } = useLearningWorlds();
   const { session } = useAuth();
-  const apiBaseUrl =
-    import.meta.env.VITE_API_BASE_URL ||
-    import.meta.env.VITE_API_URL ||
-    'http://localhost:3000';
   const accessToken = session?.access_token;
 
   const activeWorld = React.useMemo(() => {
@@ -118,8 +115,8 @@ export const GamePlay = () => {
     const savedChildId = window.localStorage.getItem('eduplay-active-child-id');
     const headers = { Authorization: `Bearer ${accessToken}` };
 
-    await fetch(`${apiBaseUrl}/api/users/me`, { headers });
-    const response = await fetch(`${apiBaseUrl}/api/users/me/children`, { headers });
+    await fetch(`${getApiBaseUrl()}/api/users/me`, { headers });
+    const response = await fetch(`${getApiBaseUrl()}/api/users/me/children`, { headers });
 
     if (!response.ok) return null;
 
@@ -131,7 +128,7 @@ export const GamePlay = () => {
       return children[0].id;
     }
 
-    const createResponse = await fetch(`${apiBaseUrl}/api/users/me/children`, {
+    const createResponse = await fetch(`${getApiBaseUrl()}/api/users/me/children`, {
       method: 'POST',
       headers: {
         ...headers,
@@ -149,7 +146,7 @@ export const GamePlay = () => {
     const child = (await createResponse.json()) as { id: string };
     window.localStorage.setItem('eduplay-active-child-id', child.id);
     return child.id;
-  }, [accessToken, apiBaseUrl]);
+  }, [accessToken]);
 
   const saveProgress = React.useCallback(
     async (stats: { stars: number; time: number; moves: number }) => {
@@ -158,7 +155,7 @@ export const GamePlay = () => {
       const childId = await getOrCreateActiveChildId();
       if (!childId) return;
 
-      await fetch(`${apiBaseUrl}/api/games/progress`, {
+      await fetch(`${getApiBaseUrl()}/api/games/progress`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -173,7 +170,7 @@ export const GamePlay = () => {
         }),
       });
     },
-    [apiBaseUrl, gameData, getOrCreateActiveChildId],
+    [gameData, getOrCreateActiveChildId],
   );
 
   const rememberLevelStars = React.useCallback((stats: { stars: number }) => {

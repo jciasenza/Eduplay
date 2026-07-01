@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useScrollReveal } from '../hooks/useScrollReveal';
+import { getApiBaseUrl } from '../lib/api';
 import { supabase } from '../lib/supabase';
 
 export const SubscriptionSuccess = () => {
@@ -23,13 +24,8 @@ export const SubscriptionSuccess = () => {
         } = await supabase.auth.getSession();
         const accessToken = session?.access_token;
 
-        const baseUrl =
-          import.meta.env.VITE_API_BASE_URL ||
-          import.meta.env.VITE_API_URL ||
-          'http://localhost:3000';
-
         if (accessToken) {
-          const response = await fetch(`${baseUrl}/api/payments/mp/sync`, {
+          const response = await fetch(`${getApiBaseUrl()}/api/payments/mp/sync`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',

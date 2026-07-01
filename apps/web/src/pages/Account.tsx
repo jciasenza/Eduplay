@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { FAMILY_CHILDREN_LIMIT } from '@aventuras/shared';
 import { useAuth } from '../hooks/useAuth';
 import { useScrollReveal } from '../hooks/useScrollReveal';
+import { getApiBaseUrl } from '../lib/api';
 import type { FamilyChildProfile } from '../lib/familyProfiles';
 import {
   FAMILY_PROFILES_CHANGE_EVENT,
@@ -50,10 +51,6 @@ export const Account = () => {
   const [activeChildProfile, setActiveChildProfile] = useState<FamilyChildProfile | null>(() =>
     readStoredActiveChildProfile(),
   );
-  const apiBaseUrl =
-    import.meta.env.VITE_API_BASE_URL ||
-    import.meta.env.VITE_API_URL ||
-    'http://localhost:3000';
   const accessToken = session?.access_token;
   const hasFamilyPack = Boolean(account?.subscription?.familyPackEnabled);
   const subscriptionStatus = hasFamilyPack ? 'Activa' : 'Gratis';
@@ -87,7 +84,7 @@ export const Account = () => {
       let loadedChildren = false;
 
       try {
-        const meResponse = await fetch(`${apiBaseUrl}/api/users/me`, {
+        const meResponse = await fetch(`${getApiBaseUrl()}/api/users/me`, {
           headers: {
             Authorization: `Bearer ${accessToken}`,
           },
@@ -102,7 +99,7 @@ export const Account = () => {
       }
 
       try {
-        const childrenResponse = await fetch(`${apiBaseUrl}/api/users/me/children`, {
+        const childrenResponse = await fetch(`${getApiBaseUrl()}/api/users/me/children`, {
           headers: {
             Authorization: `Bearer ${accessToken}`,
           },
@@ -137,7 +134,7 @@ export const Account = () => {
     };
 
     void loadAccount();
-  }, [accessToken, apiBaseUrl]);
+  }, [accessToken]);
 
   const updateProfile = (id: string, field: keyof Omit<FamilyChildProfile, 'id'>, value: string) => {
     setProfiles((current) =>
@@ -178,8 +175,8 @@ export const Account = () => {
       const isLocalProfile = profile.id.startsWith('local-');
       const response = await fetch(
         isLocalProfile
-          ? `${apiBaseUrl}/api/users/me/children`
-          : `${apiBaseUrl}/api/users/me/children/${profile.id}`,
+          ? `${getApiBaseUrl()}/api/users/me/children`
+          : `${getApiBaseUrl()}/api/users/me/children/${profile.id}`,
         {
           method: isLocalProfile ? 'POST' : 'PATCH',
           headers: {
@@ -252,7 +249,7 @@ export const Account = () => {
 
     try {
       setIsSavingProfiles(true);
-      const response = await fetch(`${apiBaseUrl}/api/users/me/children/${id}`, {
+      const response = await fetch(`${getApiBaseUrl()}/api/users/me/children/${id}`, {
         method: 'DELETE',
         headers: {
           Authorization: `Bearer ${accessToken}`,
