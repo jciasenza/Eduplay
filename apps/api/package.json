@@ -6,7 +6,7 @@
   "license": "UNLICENSED",
   "scripts": {
     "predev": "npm run build --workspace=@aventuras/shared",
-    "build": "npx prisma generate && nest build",
+    "build": "npm run build --workspace=@aventuras/shared && npx prisma generate && nest build",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "start": "nest start",
     "dev": "nest start --watch",
