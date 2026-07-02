@@ -8,6 +8,7 @@ interface SaveProgressInput {
   childId: string;
   levelId: string;
   stars: number;
+  score: number;
   time: number;
   moves: number;
   completed: boolean;
@@ -171,40 +172,56 @@ export class GamesService {
   async saveProgress(input: SaveProgressInput) {
     this.validateProgress(input);
 
-    const currentProgress = await this.prisma.gameProgress.findUnique({
-      where: {
-        childId_levelId: {
-          childId: input.childId,
-          levelId: input.levelId,
+    return this.prisma.$transaction(async (tx) => {
+      const currentProgress = await tx.gameProgress.findUnique({
+        where: {
+          childId_levelId: {
+            childId: input.childId,
+            levelId: input.levelId,
+          },
         },
-      },
-    });
-    const bestStars = Math.max(currentProgress?.stars ?? 0, input.stars);
-    const bestTime = currentProgress?.bestTime
-      ? Math.min(currentProgress.bestTime, input.time)
-      : input.time;
+      });
 
-    return this.prisma.gameProgress.upsert({
-      where: {
-        childId_levelId: {
+      const bestStars = Math.max(currentProgress?.stars ?? 0, input.stars);
+      const bestTime = currentProgress?.bestTime
+        ? Math.min(currentProgress.bestTime, input.time)
+        : input.time;
+
+      const progress = await tx.gameProgress.upsert({
+        where: {
+          childId_levelId: {
+            childId: input.childId,
+            levelId: input.levelId,
+          },
+        },
+        update: {
+          stars: bestStars,
+          bestTime,
+          completed: currentProgress?.completed || input.completed,
+          attempts: { increment: 1 },
+        },
+        create: {
           childId: input.childId,
           levelId: input.levelId,
+          stars: input.stars,
+          bestTime: input.time,
+          completed: input.completed,
+          attempts: 1,
         },
-      },
-      update: {
-        stars: bestStars,
-        bestTime,
-        completed: currentProgress?.completed || input.completed,
-        attempts: { increment: 1 },
-      },
-      create: {
-        childId: input.childId,
-        levelId: input.levelId,
-        stars: input.stars,
-        bestTime: input.time,
-        completed: input.completed,
-        attempts: 1,
-      },
+      });
+
+      await tx.gameSession.create({
+        data: {
+          childId: input.childId,
+          levelId: input.levelId,
+          score: Math.max(0, Math.trunc(input.score)),
+          moves: Math.max(0, Math.trunc(input.moves)),
+          timeSpent: Math.max(0, Math.trunc(input.time)),
+          completed: Boolean(input.completed),
+        },
+      });
+
+      return progress;
     });
   }
 
@@ -311,6 +328,10 @@ export class GamesService {
 
     if (input.stars < 0 || input.stars > 3) {
       throw new BadRequestException('stars must be between 0 and 3');
+    }
+
+    if (input.score < 0) {
+      throw new BadRequestException('score must be greater than or equal to 0');
     }
   }
 }

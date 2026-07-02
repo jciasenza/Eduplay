@@ -1,6 +1,6 @@
 {
   "name": "eduplay",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "private": true,
   "packageManager": "npm@10.8.2",
   "description": "Plataforma SaaS de juegos educativos para niños - EduPlay",

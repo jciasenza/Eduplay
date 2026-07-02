@@ -9,6 +9,7 @@ export const Landing = () => {
   const navigate = useNavigate();
   const { worlds, isLoading, error } = useLearningWorlds();
   const [featuredWorld, ...extraWorlds] = worlds;
+  const formatPrice = (price: number) => `${price}`;
   useScrollReveal([worlds.length]);
 
   return (
@@ -163,7 +164,7 @@ export const Landing = () => {
               </div>
 
               <div className="plan-card__pricing">
-                <span className="plan-card__price">${(plan.price / 100).toFixed(2)}</span>
+                <span className="plan-card__price">{formatPrice(plan.price)}</span>
                 <span className="plan-card__interval">
                   /{plan.interval === 'year' ? 'anio' : 'mes'}
                 </span>

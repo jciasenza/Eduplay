@@ -43,7 +43,7 @@ export class PaymentsService {
       yearly: 'EduPlay Explorador Anual',
       family: 'EduPlay Familia',
     };
-    const unitPrice = Number((subscriptionPlan.price / 100).toFixed(2));
+    const unitPrice = subscriptionPlan.price;
     const { preferenceId, checkoutUrl } = await this.mercadoPagoProvider.createCheckout({
       userId,
       planType,

@@ -2,6 +2,14 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useScrollReveal } from '../hooks/useScrollReveal';
 import { CharacterAvatar } from '../components/ui/CharacterAvatar';
 import { useLearningWorlds } from '../hooks/useLearningWorlds';
+import { DIFFICULTY_CONFIG } from '@aventuras/shared';
+
+const getDifficultyMeta = (difficulty?: string | null) => {
+  if (!difficulty) return null;
+
+  const key = difficulty.toUpperCase() as keyof typeof DIFFICULTY_CONFIG;
+  return DIFFICULTY_CONFIG[key] ?? null;
+};
 
 export const WorldLanding = () => {
   const navigate = useNavigate();
@@ -68,35 +76,45 @@ export const WorldLanding = () => {
           </div>
           <div className="world-games-grid">
             {activeWorld.games.length > 0 ? (
-              activeWorld.games.map((game) => (
-                <article key={game.id} className={`game-card ${game.locked ? 'game-card--locked' : ''}`}>
-                  <div className="game-card__left">
-                    <div className="game-card__icon">{game.icon}</div>
-                  </div>
-                  <div className="game-card__body">
-                    <h3>{game.title}</h3>
-                    <p>{game.description}</p>
-                  </div>
-                  <div className="game-card__cta">
-                    <button
-                      className={game.locked ? 'btn btn-outline' : 'btn btn-primary'}
-                      type="button"
-                      disabled={game.locked || !game.levels.length}
-                      onClick={() => 
-                        game.levels.length > 0
-                          ? navigate(`/world/${activeWorld.id}/game/${game.id}/level/${game.levels[0].id}`)
-                          : null
-                      }
-                    >
-                      {game.status === 'premium'
-                        ? 'Premium'
-                        : game.status === 'coming-soon'
-                        ? 'Próximamente'
-                        : 'Jugar'}
-                    </button>
-                  </div>
-                </article>
-              ))
+              activeWorld.games.map((game) => {
+                const difficultyMeta = getDifficultyMeta(game.levels[0]?.difficulty);
+
+                return (
+                  <article key={game.id} className={`game-card ${game.locked ? 'game-card--locked' : ''}`}>
+                    {difficultyMeta && (
+                      <span
+                        className="difficulty-pill game-card__difficulty"
+                        style={{
+                          backgroundColor: difficultyMeta.color,
+                        }}
+                      >
+                        {difficultyMeta.label}
+                      </span>
+                    )}
+                    <div className="game-card__left">
+                      <div className="game-card__icon">{game.icon}</div>
+                    </div>
+                    <div className="game-card__body">
+                      <h3>{game.title}</h3>
+                      <p>{game.description}</p>
+                    </div>
+                    <div className="game-card__cta">
+                      <button
+                        className={game.locked ? 'btn btn-outline' : 'btn btn-primary'}
+                        type="button"
+                        disabled={game.locked || !game.levels.length}
+                        onClick={() => navigate(`/world/${activeWorld.id}/game/${game.id}`)}
+                      >
+                        {game.status === 'premium'
+                          ? 'Premium'
+                          : game.status === 'coming-soon'
+                          ? 'Próximamente'
+                          : 'Jugar'}
+                      </button>
+                    </div>
+                  </article>
+                );
+              })
             ) : (
               <div className="game-card game-card--empty">
                 <h3>Proximamente</h3>

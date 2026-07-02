@@ -10,7 +10,7 @@ export const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
     type: PlanType.MONTHLY,
     name: 'Explorador',
     description: 'Acceso completo a todos los mundos y niveles',
-    price: 499999,
+    price: 4999,
     interval: 'month',
     externalPlanId: '',
     features: [
@@ -26,7 +26,7 @@ export const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
     type: PlanType.YEARLY,
     name: 'Explorador Anual',
     description: 'Ahorrá 40% con el plan anual',
-    price: 3599999,
+    price: 35999,
     interval: 'year',
     externalPlanId: '',
     popular: true,
@@ -41,7 +41,7 @@ export const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
     type: PlanType.FAMILY,
     name: 'Familia',
     description: 'Hasta 4 perfiles de niños',
-    price: 699999,
+    price: 6999,
     interval: 'month',
     externalPlanId: '',
     features: [

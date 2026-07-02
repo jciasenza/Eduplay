@@ -1,20 +1,53 @@
+import { useEffect, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useLearningWorlds } from '../hooks/useLearningWorlds';
 import { useScrollReveal } from '../hooks/useScrollReveal';
+import { useFamilyProfiles } from '../hooks/useFamilyProfiles';
 
 export const GameLobby = () => {
   const navigate = useNavigate();
   const { worldId, gameId } = useParams<{ worldId: string; gameId: string }>();
   const { worlds, isLoading } = useLearningWorlds();
+  const { activeChild, isLoading: isFamilyLoading } = useFamilyProfiles();
   const activeWorld = worlds.find((world) => world.id === worldId);
   const activeGame = activeWorld?.games.find((game) => game.id === gameId);
   useScrollReveal([activeWorld?.id, activeGame?.id]);
 
-  if (isLoading) {
+  const resumeLevel = useMemo(() => {
+    if (!activeWorld || !activeGame) return null;
+
+    const worldSourceId = activeWorld.sourceId ?? activeWorld.id;
+    const completedIndices = (activeChild?.progress ?? [])
+      .filter((progress) => progress.completed && progress.level?.worldId === worldSourceId)
+      .map((progress) =>
+        activeGame.levels.findIndex(
+          (level) => level.sourceId === progress.levelId || level.id === progress.levelId,
+        ),
+      )
+      .filter((index) => index >= 0);
+
+    if (completedIndices.length === 0) {
+      return activeGame.levels[0] ?? null;
+    }
+
+    const nextIndex = Math.min(
+      Math.max(...completedIndices) + 1,
+      activeGame.levels.length - 1,
+    );
+    return activeGame.levels[nextIndex] ?? activeGame.levels[0] ?? null;
+  }, [activeChild?.progress, activeGame, activeWorld]);
+
+  useEffect(() => {
+    if (isLoading || isFamilyLoading || !activeWorld || !activeGame || !resumeLevel) return;
+
+    navigate(`/world/${worldId}/game/${gameId}/level/${resumeLevel.id}`, { replace: true });
+  }, [activeGame, activeWorld, gameId, isFamilyLoading, isLoading, navigate, resumeLevel, worldId]);
+
+  if (isLoading || isFamilyLoading) {
     return (
       <section className="game-page">
         <div className="container game-page__inner">
-          <div className="game-loading">Cargando juego...</div>
+          <div className="game-loading">Cargando partida...</div>
         </div>
       </section>
     );
@@ -48,43 +81,7 @@ export const GameLobby = () => {
           <div>
             <span className="eyebrow">{activeWorld.title}</span>
             <h1>{activeGame.title}</h1>
-            <p>{activeGame.description}</p>
-          </div>
-          <div className="game-actions">
-            <button className="btn btn-outline" type="button" onClick={() => navigate(`/world/${worldId}`)}>
-              Volver al mundo
-            </button>
-          </div>
-        </div>
-
-        <div className="section-block">
-          <div className="section-heading section-heading--small">
-            <span className="eyebrow">Niveles</span>
-            <h2>Elige un nivel</h2>
-          </div>
-          <div className="level-list">
-            {activeGame.levels.length > 0 ? (
-              activeGame.levels.map((level) => (
-                <div key={level.id} className="level-card">
-                  <div>
-                    <strong>{level.title}</strong>
-                    <p>Tiempo: {level.timeLimit}s • {level.gridSize.cols}x{level.gridSize.rows}</p>
-                  </div>
-                  <button
-                    className="btn btn-primary"
-                    type="button"
-                    onClick={() => navigate(`/world/${worldId}/game/${gameId}/level/${level.id}`)}
-                  >
-                    Jugar
-                  </button>
-                </div>
-              ))
-            ) : (
-              <div className="level-card level-card--empty">
-                <strong>Próximamente</strong>
-                <p>Este juego aún no tiene niveles disponibles.</p>
-              </div>
-            )}
+            <p>Abriendo el ultimo nivel jugado...</p>
           </div>
         </div>
       </div>

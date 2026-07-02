@@ -148,9 +148,112 @@ export class UsersService {
   }
 
   async getChildren(userId: string) {
-    return this.prisma.childProfile.findMany({
+    const children = await this.prisma.childProfile.findMany({
       where: { userId },
+      include: {
+        progress: {
+          include: {
+            level: {
+              select: {
+                order: true,
+                worldId: true,
+                world: {
+                  select: {
+                    id: true,
+                    name: true,
+                    slug: true,
+                  },
+                },
+              },
+            },
+          },
+        },
+        sessions: {
+          select: {
+            score: true,
+            level: {
+              select: {
+                worldId: true,
+                world: {
+                  select: {
+                    id: true,
+                    name: true,
+                    slug: true,
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
       orderBy: { createdAt: 'asc' },
+    });
+
+    return children.map((child) => {
+      const totalStars = child.progress.reduce((sum, progress) => sum + progress.stars, 0);
+      const totalPoints = child.sessions.reduce((sum, session) => sum + session.score, 0);
+      const completedLevels = child.progress.filter((progress) => progress.completed).length;
+      const highestLevelOrder = child.progress.reduce(
+        (maxOrder, progress) => Math.max(maxOrder, progress.level?.order ?? 0),
+        0,
+      );
+      const worldProgressMap = new Map<
+        string,
+        {
+          worldId: string;
+          worldName: string;
+          worldSlug: string;
+          stars: number;
+          points: number;
+          completedLevels: number;
+        }
+      >();
+
+      for (const progress of child.progress) {
+        const world = progress.level?.world;
+        if (!world) continue;
+
+        const current = worldProgressMap.get(world.id) ?? {
+          worldId: world.id,
+          worldName: world.name,
+          worldSlug: world.slug,
+          stars: 0,
+          points: 0,
+          completedLevels: 0,
+        };
+
+        current.stars += progress.stars;
+        current.completedLevels += progress.completed ? 1 : 0;
+        worldProgressMap.set(world.id, current);
+      }
+
+      for (const session of child.sessions) {
+        const world = session.level?.world;
+        if (!world) continue;
+
+        const current = worldProgressMap.get(world.id) ?? {
+          worldId: world.id,
+          worldName: world.name,
+          worldSlug: world.slug,
+          stars: 0,
+          points: 0,
+          completedLevels: 0,
+        };
+
+        current.points += session.score;
+        worldProgressMap.set(world.id, current);
+      }
+
+      return {
+        ...child,
+        totalStars,
+        totalPoints,
+        completedLevels,
+        highestLevelOrder,
+        worldProgress: Array.from(worldProgressMap.values()).sort((a, b) =>
+          a.worldName.localeCompare(b.worldName),
+        ),
+      };
     });
   }
 

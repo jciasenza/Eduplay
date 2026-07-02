@@ -17,12 +17,15 @@ export const GamePlay = () => {
   const navigate = useNavigate();
   const { worldId, gameId, levelId } = useParams<{ worldId?: string; gameId?: string; levelId?: string }>();
   const [, setGame] = React.useState<Phaser.Game | null>(null);
+  const audioContextRef = React.useRef<AudioContext | null>(null);
   const [timeRemaining, setTimeRemaining] = React.useState<number>(0);
   const [moves, setMoves] = React.useState<number>(0);
   const [score, setScore] = React.useState<number>(0);
   const [gameReadySignal, setGameReadySignal] = React.useState(0);
+  const [confettiSeed, setConfettiSeed] = React.useState(0);
   const [levelResult, setLevelResult] = React.useState<{
     stars: number;
+    score: number;
     time: number;
     moves: number;
   } | null>(null);
@@ -69,7 +72,14 @@ export const GamePlay = () => {
     return activeGame.levels[activeLevelIndex + 1] ?? null;
   }, [activeGame, activeLevelIndex]);
 
+  const firstLevel = React.useMemo(() => activeGame?.levels[0] ?? null, [activeGame]);
+
   const levelLabel = activeLevelIndex >= 0 ? `Nivel ${activeLevelIndex + 1}` : 'Nivel';
+  const levelTitle = React.useMemo(() => {
+    const rawTitle = gameData?.title ?? '';
+    const cleanedTitle = rawTitle.replace(/^Nivel\s*\d+\s*:\s*/i, '').trim();
+    return cleanedTitle || rawTitle;
+  }, [gameData?.title]);
   const totalStars = React.useMemo(
     () => Object.values(levelStars).reduce((total, stars) => total + stars, 0),
     [levelStars],
@@ -108,6 +118,12 @@ export const GamePlay = () => {
   const exitGame = React.useCallback(() => {
     navigate(activeWorld ? `/world/${activeWorld.id}` : '/dashboard');
   }, [activeWorld, navigate]);
+
+  const restartFromBeginning = React.useCallback(() => {
+    if (!activeWorld || !activeGame || !firstLevel) return;
+
+    navigate(`/world/${activeWorld.id}/game/${activeGame.id}/level/${firstLevel.id}`);
+  }, [activeGame, activeWorld, firstLevel, navigate]);
 
   const getOrCreateActiveChildId = React.useCallback(async () => {
     if (!accessToken) return null;
@@ -149,7 +165,7 @@ export const GamePlay = () => {
   }, [accessToken]);
 
   const saveProgress = React.useCallback(
-    async (stats: { stars: number; time: number; moves: number }) => {
+    async (stats: { stars: number; score: number; time: number; moves: number }) => {
       if (!gameData?.sourceId) return;
 
       const childId = await getOrCreateActiveChildId();
@@ -160,15 +176,16 @@ export const GamePlay = () => {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          childId,
-          levelId: gameData.sourceId,
-          stars: stats.stars,
-          time: stats.time,
-          moves: stats.moves,
-          completed: stats.stars > 0,
-        }),
-      });
+          body: JSON.stringify({
+            childId,
+            levelId: gameData.sourceId,
+            stars: stats.stars,
+            score: stats.score,
+            time: stats.time,
+            moves: stats.moves,
+            completed: stats.stars > 0,
+          }),
+        });
     },
     [gameData, getOrCreateActiveChildId],
   );
@@ -191,6 +208,66 @@ export const GamePlay = () => {
     });
   }, [gameData]);
 
+  const ensureAudioContext = React.useCallback(() => {
+    if (audioContextRef.current) {
+      return audioContextRef.current;
+    }
+
+    const AudioContextCtor = window.AudioContext || (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+    if (!AudioContextCtor) {
+      return null;
+    }
+
+    audioContextRef.current = new AudioContextCtor();
+    return audioContextRef.current;
+  }, []);
+
+  const playResultSound = React.useCallback(async (win: boolean) => {
+    const context = ensureAudioContext();
+    if (!context) return;
+
+    if (context.state === 'suspended') {
+      try {
+        await context.resume();
+      } catch {
+        return;
+      }
+    }
+
+    const patterns: Array<{ frequency: number; duration: number; type?: OscillatorType }> = win
+      ? [
+          { frequency: 523.25, duration: 0.08, type: 'sine' },
+          { frequency: 659.25, duration: 0.08, type: 'sine' },
+          { frequency: 783.99, duration: 0.08, type: 'sine' },
+          { frequency: 1046.5, duration: 0.18, type: 'sine' },
+        ]
+      : [
+          { frequency: 220, duration: 0.1, type: 'triangle' },
+          { frequency: 196, duration: 0.12, type: 'triangle' },
+          { frequency: 174.61, duration: 0.16, type: 'triangle' },
+        ];
+
+    let startAt = context.currentTime;
+
+    for (const step of patterns) {
+      const oscillator = context.createOscillator();
+      const gain = context.createGain();
+
+      oscillator.type = step.type ?? 'sine';
+      oscillator.frequency.value = step.frequency;
+      gain.gain.setValueAtTime(0.0001, startAt);
+      gain.gain.exponentialRampToValueAtTime(win ? 0.08 : 0.06, startAt + 0.01);
+      gain.gain.exponentialRampToValueAtTime(0.0001, startAt + step.duration);
+
+      oscillator.connect(gain);
+      gain.connect(context.destination);
+      oscillator.start(startAt);
+      oscillator.stop(startAt + step.duration + 0.02);
+
+      startAt += step.duration + 0.04;
+    }
+  }, [ensureAudioContext]);
+
   useLayoutEffect(() => {
     if (!gameData) return;
 
@@ -198,7 +275,7 @@ export const GamePlay = () => {
     const handleUpdateTime = (time: number) => setTimeRemaining(time);
     const handleUpdateMoves = (movesValue: number) => setMoves(movesValue);
     const handleUpdateScore = (scoreValue: number) => setScore(scoreValue);
-    const handleLevelComplete = (stats: { stars: number; time: number; moves: number }) => {
+    const handleLevelComplete = (stats: { stars: number; score: number; time: number; moves: number }) => {
       setLevelResult(stats);
       rememberLevelStars(stats);
       void saveProgress(stats);
@@ -237,6 +314,40 @@ export const GamePlay = () => {
     });
   }, [gameReadySignal, gameData, nextLevel]);
 
+  React.useEffect(() => {
+    if (!levelResult) return;
+
+    void playResultSound(levelResult.stars > 0);
+    if (levelResult.stars > 0) {
+      setConfettiSeed((current) => current + 1);
+    }
+  }, [levelResult, playResultSound]);
+
+  const confettiPieces = React.useMemo(() => {
+    if (!levelResult || levelResult.stars <= 0) return [];
+
+    const colors = ['#ff4d6d', '#ffb703', '#4dd4ac', '#4dabf7', '#b197fc', '#ffd166'];
+    const pieceCount = 72;
+
+    return Array.from({ length: pieceCount }, (_, index) => {
+      const angle = (Math.PI * 2 * index) / pieceCount + (Math.random() * 0.7 - 0.35);
+      const distance = 140 + Math.random() * 280;
+      const burstX = `${Math.cos(angle) * distance}px`;
+      const burstY = `${Math.sin(angle) * distance}px`;
+
+      return {
+        id: `${confettiSeed}-${index}`,
+        size: `${8 + Math.random() * 8}px`,
+        color: colors[index % colors.length],
+        delay: `${Math.random() * 0.18}s`,
+        duration: `${0.9 + Math.random() * 0.8}s`,
+        rotation: `${Math.random() * 720 - 360}deg`,
+        burstX,
+        burstY,
+      };
+    });
+  }, [confettiSeed, levelResult]);
+
   if (isLoading) {
     return (
       <section className="game-page">
@@ -272,14 +383,24 @@ export const GamePlay = () => {
         <div className="game-header">
           <div>
             <span className="eyebrow">Mundo {activeWorld.title}</span>
-            <h1>{gameData.title}</h1>
+            <h1>{levelTitle}</h1>
             <p className="game-header__subtitle">{levelLabel}</p>
           </div>
-          <div className="game-stats">
-            <span>⭐ {totalStars}</span>
-            <span>Puntos: {score}</span>
-            <span>⏱ {timeRemaining}s</span>
-            <span>Movimientos: {moves}</span>
+          <div className="game-header__side">
+            <div className="game-actions game-actions--stacked">
+              <button className="btn btn-outline" type="button" onClick={exitGame}>
+                Volver al mundo
+              </button>
+              <button className="btn btn-primary" type="button" onClick={restartFromBeginning} disabled={!firstLevel}>
+                Empezar desde el principio
+              </button>
+            </div>
+            <div className="game-stats">
+              <span>⭐ {totalStars}</span>
+              <span>Puntos: {score}</span>
+              <span>⏱ {timeRemaining}s</span>
+              <span>Movimientos: {moves}</span>
+            </div>
           </div>
         </div>
 
@@ -289,6 +410,29 @@ export const GamePlay = () => {
           </React.Suspense>
           {levelResult && (
             <div className="game-result">
+              {levelResult.stars > 0 && (
+                <div className="game-confetti" aria-hidden="true">
+                  <span className="game-confetti__flash" />
+                  {confettiPieces.map((piece) => (
+                    <span
+                      key={piece.id}
+                      className="game-confetti__piece"
+                      style={{
+                        left: '50%',
+                        top: '50%',
+                        width: piece.size,
+                        height: `calc(${piece.size} * 1.2)`,
+                        backgroundColor: piece.color,
+                        animationDelay: piece.delay,
+                        animationDuration: piece.duration,
+                        '--confetti-burst-x': piece.burstX,
+                        '--confetti-burst-y': piece.burstY,
+                        '--confetti-rotation': piece.rotation,
+                      } as React.CSSProperties}
+                    />
+                  ))}
+                </div>
+              )}
               <div className="game-result__panel">
                 <h2>{levelResult.stars > 0 ? 'Nivel completado' : 'Tiempo agotado'}</h2>
                 {levelResult.stars > 0 ? (

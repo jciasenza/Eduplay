@@ -3,6 +3,32 @@ export interface FamilyChildProfile {
   name: string;
   age: number;
   avatarId: string;
+  progress?: Array<{
+    id: string;
+    levelId: string;
+    completed: boolean;
+    level?: {
+      order: number;
+      worldId: string;
+      world?: {
+        id: string;
+        name: string;
+        slug: string;
+      };
+    };
+  }>;
+  totalStars?: number;
+  totalPoints?: number;
+  completedLevels?: number;
+  highestLevelOrder?: number;
+  worldProgress?: Array<{
+    worldId: string;
+    worldName: string;
+    worldSlug: string;
+    stars: number;
+    points: number;
+    completedLevels: number;
+  }>;
 }
 
 export const FAMILY_PROFILES_CHANGE_EVENT = 'eduplay-family-profiles-change';

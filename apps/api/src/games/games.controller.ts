@@ -5,6 +5,7 @@ interface SaveProgressBody {
   childId: string;
   levelId: string;
   stars: number;
+  score: number;
   time: number;
   moves: number;
   completed: boolean;

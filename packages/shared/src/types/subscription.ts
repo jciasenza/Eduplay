@@ -37,7 +37,7 @@ export interface SubscriptionPlan {
   type: PlanType;
   name: string;
   description: string;
-  price: number; // USD cents
+  price: number; // Currency units shown and charged by the app
   interval: 'month' | 'year';
   features: string[];
   externalPlanId: string;

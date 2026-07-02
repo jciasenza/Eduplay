@@ -218,8 +218,68 @@ Este archivo se debe mantener actualizado con cada avance significativo y con la
 - Confirmado que `npm run dev` vuelve a levantar `@aventuras/web` y `@aventuras/api` correctamente con el stack actual.
 - Agregado `@types/ws` y un manejo de error más claro en el provider de Mercado Pago para no ocultar fallos de preference detrás de un 500 genérico.
 
+### 1/7/2026, 00:05:00
+
+- Ajustado el header para mobile con botón hamburguesa, avatar compacto sin nombre visible y panel de navegación desplegable para no saturar la barra superior.
+- Mejorado el world landing en celular para que la ilustracion del mundo no se salga del contenedor y los juegos se reorganicen en una sola columna.
+- Reforzado el layout del juego de memoria en pantallas chicas, aumentando el espacio util del tablero y subiendo la grilla para que el juego se vea mas grande y protagonista.
+
+### 1/7/2026, 00:18:00
+
+- Simplificado el encabezado del nivel para mostrar solo el nombre corto del desafio y mantener el subtitulo con el nivel debajo.
+- Restaurado el formato de precios con dos decimales exactos en los planes para evitar redondeos visuales.
+- Configurado Phaser en modo `RESIZE` y reforzado el canvas para que el juego ocupe mejor el recuadro blanco en pantallas moviles.
+
+### 1/7/2026, 00:32:00
+
+- Convertidos los precios de planes a montos enteros visibles (`4999`, `35999`, `6999`) para evitar mostrar decimales y alinear UI con el checkout de Mercado Pago.
+- Ajustado `PaymentsService` para mandar el valor entero al provider de Mercado Pago sin dividir entre 100.
+
 ### 30/6/2026, 19:50:00
 
 - Ajustado el checkout de Mercado Pago a moneda `ARS` para evitar validaciones incompatibles con la cuenta de pruebas local.
 - El provider de Mercado Pago ahora expone el detalle real del error devuelto por la API en vez de devolver siempre un `400` genérico.
 - `Subscribe` toma la moneda de `VITE_MP_CURRENCY_ID` para mantener consistentes el precio visual y el checkout.
+
+### 1/7/2026, 00:45:00
+
+- Guardado el `score` de cada partida en `GameSession` al cerrar un nivel, junto con estrellas, tiempo y movimientos.
+- Agregado un resumen de progreso por niño desde el backend con estrellas totales, puntos, niveles completados y avance máximo.
+- Mostrada la dificultad real de cada juego y nivel en el frontend con etiquetas de color usando la configuración del backend.
+
+### 1/7/2026, 01:05:00
+
+- Reordenada la pantalla de cuenta para mostrar la suscripción arriba y los perfiles abajo en una sola columna.
+- Quitado el cartel de bloqueo del pack familiar y reemplazado por una nota más simple.
+- Agregado el resumen de progreso de cada jugador debajo de su tarjeta, incluyendo estrellas, puntos y progreso por mundo.
+
+### 1/7/2026, 01:30:00
+
+- Conectado el progreso real del jugador activo a las cards del dashboard para mostrar avance por mundo con barra y texto.
+- Cambiado el acceso al mundo para entrar al lobby del juego y reanudar desde el siguiente nivel completado.
+- Agregado el botón para empezar desde el principio dentro del lobby, junto al botón de continuar.
+
+### 1/7/2026, 01:55:00
+
+- Eliminado el paso intermedio del lobby: ahora el acceso al juego redirige directo al ultimo nivel jugado.
+- Movido el boton de reinicio al juego para volver al primer nivel desde la pantalla de partida.
+
+### 1/7/2026, 22:40:00
+
+- Agregados efectos de sonido sintetizados al Memotest para click, acierto, error, victoria y derrota.
+- Inicializado el contexto de audio al entrar al juego para que los sonidos funcionen sin archivos externos.
+
+### 1/7/2026, 22:45:00
+
+- Sumado un festejo visual con papelitos de colores en la pantalla de victoria del juego.
+- Movido el sonido de victoria y derrota a la escena final para que se reproduzca una sola vez al terminar la partida.
+
+### 1/7/2026, 22:50:00
+
+- Reubicado el festejo visual y sonoro al overlay de `GamePlay`, que es la capa real que muestra el resultado de la partida.
+- Agregado confeti animado y sonido de victoria o derrota al completar o fallar el nivel.
+
+### 1/7/2026, 22:55:00
+
+- Convertido el festejo en una explosión desde el centro del panel de resultado.
+- Sumado un destello radial para reforzar el impacto visual al ganar.

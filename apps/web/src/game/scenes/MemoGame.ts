@@ -12,6 +12,7 @@ export class MemoGame extends Scene {
   private timeRemaining: number = 0;
   private canSelect: boolean = true;
   private isLevelComplete: boolean = false;
+  private audioContext: AudioContext | null = null;
 
   constructor() {
     super('MemoGame');
@@ -28,6 +29,7 @@ export class MemoGame extends Scene {
     this.canSelect = true;
     this.isLevelComplete = false;
     this.input.enabled = true;
+    this.ensureAudioContext();
   }
 
   create() {
@@ -35,10 +37,14 @@ export class MemoGame extends Scene {
     this.cameras.main.setBackgroundColor('#241D36');
     
     const width = this.cameras.main.width;
+    const isCompact = this.cameras.main.width < 700 || this.cameras.main.height < 700;
+    const titleText = String(this.levelData.title || 'Nivel')
+      .replace(/^Nivel\s*\d+\s*:\s*/i, '')
+      .trim() || String(this.levelData.title || 'Nivel');
     
-    this.add.text(width / 2, 40, this.levelData.title || 'Nivel', {
+    this.add.text(width / 2, isCompact ? 22 : 40, titleText, {
       fontFamily: 'Nunito',
-      fontSize: '32px',
+      fontSize: isCompact ? '22px' : '32px',
       color: '#ffffff'
     }).setOrigin(0.5);
 
@@ -68,6 +74,7 @@ export class MemoGame extends Scene {
     // Grid based on level configuration with real pairing and shuffling
     const cols = this.levelData.gridSize?.cols || 3;
     const rows = this.levelData.gridSize?.rows || 2;
+    const isCompact = this.cameras.main.width < 700 || this.cameras.main.height < 700;
 
     const total = cols * rows;
     const totalPairs = Math.floor(total / 2);
@@ -89,22 +96,23 @@ export class MemoGame extends Scene {
     // Layout calculations responsive to camera
     const camW = this.cameras.main.width;
     const camH = this.cameras.main.height;
-    const padding = Math.min(48, camW * 0.06);
-    const gap = Math.min(24, camW * 0.02);
+    const padding = Math.min(isCompact ? 14 : 48, camW * (isCompact ? 0.04 : 0.06));
+    const gap = Math.min(isCompact ? 8 : 24, camW * (isCompact ? 0.02 : 0.02));
 
     // compute available area for grid
     const availableW = camW - padding * 2;
-    const availableH = camH - 160; // leave space for header/timer
+    const availableH = camH - (isCompact ? 88 : 160); // leave space for header/timer
 
     // approximate card size
-    const cardW = Math.min(120, Math.floor((availableW - gap * (cols - 1)) / cols));
-    const cardH = Math.min(160, Math.floor((availableH - gap * (rows - 1)) / rows));
+    const cardW = Math.min(isCompact ? 150 : 120, Math.floor((availableW - gap * (cols - 1)) / cols));
+    const cardH = Math.min(isCompact ? 210 : 160, Math.floor((availableH - gap * (rows - 1)) / rows));
 
     const gridW = cols * cardW + (cols - 1) * gap;
     const gridH = rows * cardH + (rows - 1) * gap;
 
     const startX = camW / 2 - gridW / 2 + cardW / 2;
-    const startY = camH / 2 - gridH / 2 + cardH / 2 + 20;
+    const gridTop = isCompact ? Math.max(74, camH * 0.1) : camH / 2 - gridH / 2 + 20;
+    const startY = gridTop + cardH / 2;
 
     // color palette for faces
     const palette = [0xFF8C42, 0x6C3CE1, 0x10B981, 0xF59E0B, 0xEF4444, 0x3B82F6, 0xA78BFA];
@@ -150,6 +158,7 @@ export class MemoGame extends Scene {
   handleCardClick(card: Phaser.GameObjects.Container) {
     if (this.isLevelComplete || !this.canSelect || this.selectedCards.includes(card) || card.getData('matched')) return;
 
+    void this.playSound('click');
     this.canSelect = false;
     const rect = card.getData('rect') as Phaser.GameObjects.Rectangle;
     rect.disableInteractive();
@@ -193,6 +202,7 @@ export class MemoGame extends Scene {
     const isMatch = val1 === val2;
 
     if (isMatch) {
+      void this.playSound('match');
       card1.setData('matched', true);
       card2.setData('matched', true);
       this.matches++;
@@ -229,6 +239,7 @@ export class MemoGame extends Scene {
       }
     } else {
       // Not a match, flip back after a short delay
+      void this.playSound('mismatch');
       this.score = Math.max(0, this.score - 4);
       EventBus.emit(GameEvents.UPDATE_SCORE, this.score);
 
@@ -284,12 +295,85 @@ export class MemoGame extends Scene {
 
     EventBus.emit(GameEvents.LEVEL_COMPLETE, {
       stars,
+      score: this.score,
       time: this.levelData.timeLimit - this.timeRemaining,
       moves: this.moves
     });
 
     if (!win) {
       EventBus.emit(GameEvents.GAME_OVER);
+    }
+  }
+
+  private ensureAudioContext() {
+    if (this.audioContext) {
+      return this.audioContext;
+    }
+
+    const AudioContextCtor = window.AudioContext || (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+    if (!AudioContextCtor) {
+      return null;
+    }
+
+    this.audioContext = new AudioContextCtor();
+    return this.audioContext;
+  }
+
+  private async playSound(kind: 'click' | 'match' | 'mismatch' | 'win' | 'lose') {
+    const context = this.ensureAudioContext();
+    if (!context) return;
+
+    if (context.state === 'suspended') {
+      try {
+        await context.resume();
+      } catch {
+        return;
+      }
+    }
+
+    const patterns: Record<typeof kind, Array<{ frequency: number; duration: number; type?: OscillatorType }>> = {
+      click: [{ frequency: 720, duration: 0.055, type: 'square' }],
+      match: [
+        { frequency: 523.25, duration: 0.08, type: 'sine' },
+        { frequency: 659.25, duration: 0.08, type: 'sine' },
+        { frequency: 783.99, duration: 0.12, type: 'sine' },
+      ],
+      mismatch: [
+        { frequency: 240, duration: 0.09, type: 'triangle' },
+        { frequency: 180, duration: 0.14, type: 'triangle' },
+      ],
+      win: [
+        { frequency: 523.25, duration: 0.08, type: 'sine' },
+        { frequency: 659.25, duration: 0.08, type: 'sine' },
+        { frequency: 783.99, duration: 0.08, type: 'sine' },
+        { frequency: 1046.5, duration: 0.16, type: 'sine' },
+      ],
+      lose: [
+        { frequency: 220, duration: 0.1, type: 'triangle' },
+        { frequency: 196, duration: 0.12, type: 'triangle' },
+        { frequency: 174.61, duration: 0.16, type: 'triangle' },
+      ],
+    };
+
+    const sequence = patterns[kind];
+    let startAt = context.currentTime;
+
+    for (const step of sequence) {
+      const oscillator = context.createOscillator();
+      const gain = context.createGain();
+
+      oscillator.type = step.type ?? 'sine';
+      oscillator.frequency.value = step.frequency;
+      gain.gain.setValueAtTime(0.0001, startAt);
+      gain.gain.exponentialRampToValueAtTime(0.06, startAt + 0.01);
+      gain.gain.exponentialRampToValueAtTime(0.0001, startAt + step.duration);
+
+      oscillator.connect(gain);
+      gain.connect(context.destination);
+      oscillator.start(startAt);
+      oscillator.stop(startAt + step.duration + 0.02);
+
+      startAt += step.duration + 0.04;
     }
   }
 }

@@ -7,6 +7,7 @@ import { getApiBaseUrl } from '../lib/api';
 import type { FamilyChildProfile } from '../lib/familyProfiles';
 import {
   FAMILY_PROFILES_CHANGE_EVENT,
+  getAvatarSrc,
   readStoredActiveChildId,
   readStoredActiveChildProfile,
   readStoredChildren,
@@ -333,12 +334,10 @@ export const Account = () => {
                 <span className="eyebrow">Perfiles</span>
                 <h2>Usuarios de juego</h2>
               </div>
-              {hasFamilyPack ? (
+              {hasFamilyPack && (
                 <button className="btn btn-outline btn-sm" onClick={addProfile} disabled={!canAddProfile}>
                   Agregar
                 </button>
-              ) : (
-                <span className="subscription-pill">Bloqueado sin pack familiar</span>
               )}
             </div>
 
@@ -346,56 +345,114 @@ export const Account = () => {
               {profileMessage && <p className="account-note">{profileMessage}</p>}
               {!hasFamilyPack && (
                 <p className="account-note">
-                  El pack familiar habilita hasta 4 usuarios de juego. Por ahora solo puedes usar el perfil base.
+                  El plan gratuito permite un solo jugador. El pack familiar habilita hasta 4 usuarios de juego.
                 </p>
               )}
-              {profiles.map((profile) => (
-                <div key={profile.id} className="profile-editor">
-                  <label>
-                    Nombre
-                    <input
-                      value={profile.name}
-                      onChange={(event) => updateProfile(profile.id, 'name', event.target.value)}
-                    />
-                  </label>
-                  <label>
-                    Edad
-                    <input
-                      min="3"
-                      max="12"
-                      type="number"
-                      value={profile.age}
-                      onChange={(event) => updateProfile(profile.id, 'age', event.target.value)}
-                    />
-                  </label>
-                  <label>
-                    Avatar
-                    <select
-                      value={profile.avatarId}
-                      onChange={(event) => updateProfile(profile.id, 'avatarId', event.target.value)}
-                    >
-                      <option value="numi">Numi</option>
-                      <option value="lira">Lira</option>
-                      <option value="natu">Natu</option>
-                      <option value="pixel">Pixel</option>
-                    </select>
-                  </label>
-                  <button
-                    className="btn btn-ghost btn-sm"
-                    onClick={() => deleteProfile(profile.id)}
-                    disabled={profiles.length === 1}
+              {profiles.map((profile) => {
+                const isActiveProfile = activeChildId === profile.id;
+                const worldProgress = profile.worldProgress ?? [];
+
+                return (
+                  <div
+                    key={profile.id}
+                    className={`profile-editor ${isActiveProfile ? 'profile-editor--active' : ''}`}
                   >
-                    Quitar
-                  </button>
-                  <button
-                    className="btn btn-primary btn-sm"
-                    onClick={() => saveProfile(profile)}
-                    disabled={isSavingProfiles}
-                  >
-                    Guardar
-                  </button>
-                </div>
-              ))}
+                    <div className="profile-editor__top">
+                      <div className="profile-editor__identity">
+                        <img
+                          className="profile-editor__avatar"
+                          src={getAvatarSrc(profile.avatarId)}
+                          alt={profile.name}
+                        />
+                        <div>
+                          <strong>{profile.name}</strong>
+                          <p>
+                            {profile.age} años
+                            {isActiveProfile ? ' · Jugador activo' : ''}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="profile-editor__badge-row">
+                        <span className="profile-editor__badge">⭐ {profile.totalStars ?? 0}</span>
+                        <span className="profile-editor__badge">Puntos {profile.totalPoints ?? 0}</span>
+                        <span className="profile-editor__badge">
+                          Mundos {profile.worldProgress?.length ?? 0}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="profile-editor__form">
+                      <label>
+                        Nombre
+                        <input
+                          value={profile.name}
+                          onChange={(event) => updateProfile(profile.id, 'name', event.target.value)}
+                        />
+                      </label>
+                      <label>
+                        Edad
+                        <input
+                          min="3"
+                          max="12"
+                          type="number"
+                          value={profile.age}
+                          onChange={(event) => updateProfile(profile.id, 'age', event.target.value)}
+                        />
+                      </label>
+                      <label>
+                        Avatar
+                        <select
+                          value={profile.avatarId}
+                          onChange={(event) => updateProfile(profile.id, 'avatarId', event.target.value)}
+                        >
+                          <option value="numi">Numi</option>
+                          <option value="lira">Lira</option>
+                          <option value="natu">Natu</option>
+                          <option value="pixel">Pixel</option>
+                        </select>
+                      </label>
+                      <button
+                        className="btn btn-ghost btn-sm"
+                        onClick={() => deleteProfile(profile.id)}
+                        disabled={profiles.length === 1}
+                      >
+                        Quitar
+                      </button>
+                      <button
+                        className="btn btn-primary btn-sm"
+                        onClick={() => saveProfile(profile)}
+                        disabled={isSavingProfiles}
+                      >
+                        Guardar
+                      </button>
+                    </div>
+
+                    <div className="profile-progress">
+                      <div className="profile-progress__summary">
+                        <span>⭐ {profile.totalStars ?? 0} estrellas acumuladas</span>
+                        <span>🏅 {profile.completedLevels ?? 0} niveles completados</span>
+                        <span>🎯 {profile.totalPoints ?? 0} puntos</span>
+                      </div>
+                      {worldProgress.length > 0 ? (
+                        <div className="profile-progress__worlds">
+                          {worldProgress.map((world) => (
+                            <div key={world.worldId} className="profile-progress__world">
+                              <strong>{world.worldName}</strong>
+                              <p>
+                                {world.completedLevels} niveles · {world.stars} estrellas · {world.points} puntos
+                              </p>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="profile-progress__empty">
+                          Todavía no hay progreso guardado en este jugador.
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </article>
         </div>

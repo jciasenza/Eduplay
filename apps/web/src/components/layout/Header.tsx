@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, NavLink } from 'react-router-dom';
 import { BrandLogo } from '../brand/BrandLogo';
 import { useAuth } from '../../hooks/useAuth';
@@ -8,6 +8,7 @@ import { getAvatarSrc } from '../../lib/familyProfiles';
 export const Header = () => {
   const { user, signOut } = useAuth();
   const [isFamilyMenuOpen, setIsFamilyMenuOpen] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const {
     activeChild,
     children,
@@ -32,11 +33,82 @@ export const Header = () => {
     ? getAvatarSrc(activeChild.avatarId)
     : userAvatarUrl ?? getAvatarSrc();
 
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth > 680) {
+        setIsMobileMenuOpen(false);
+      }
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  const closeMobileMenu = () => setIsMobileMenuOpen(false);
+
   return (
     <header className="site-header">
       <div className="container site-header__inner">
         <BrandLogo />
-        <nav className="site-nav" aria-label="Navegacion principal">
+        <div className="site-header__actions">
+          <div className="site-header__family-shell">
+            <button
+              type="button"
+              className="site-header__avatar"
+              title={activeProfileLabel}
+              aria-haspopup={canSwitchFamily ? 'menu' : undefined}
+              aria-expanded={canSwitchFamily ? isFamilyMenuOpen : undefined}
+              onClick={() => {
+                if (!canSwitchFamily) return;
+                setIsFamilyMenuOpen((value) => !value);
+              }}
+              disabled={isLoading}
+            >
+              <img
+                src={activeProfileAvatar}
+                alt={activeProfileLabel}
+                className="site-header__avatar-image"
+              />
+              <span className="site-header__avatar-name">{activeProfileLabel}</span>
+            </button>
+
+            {canSwitchFamily && isFamilyMenuOpen && (
+              <div className="site-header__family-menu" role="menu" aria-label="Cambiar familiar">
+                {children.map((child) => (
+                  <button
+                    key={child.id}
+                    type="button"
+                    className="site-header__family-option"
+                    onClick={() => {
+                      setActiveChildId(child.id);
+                      setIsFamilyMenuOpen(false);
+                    }}
+                    role="menuitem"
+                  >
+                    <img
+                      src={getAvatarSrc(child.avatarId)}
+                      alt={child.name}
+                      className="site-header__family-option-image"
+                    />
+                    <span>{child.name}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+          <button
+            type="button"
+            className="site-header__menu-button"
+            aria-label={isMobileMenuOpen ? 'Cerrar menú' : 'Abrir menú'}
+            aria-expanded={isMobileMenuOpen}
+            onClick={() => setIsMobileMenuOpen((value) => !value)}
+          >
+            <span />
+            <span />
+            <span />
+          </button>
+        </div>
+        <nav className="site-nav site-nav--desktop" aria-label="Navegacion principal">
           {user ? (
             <>
               <NavLink to="/dashboard" className="btn btn-ghost btn-sm">
@@ -51,51 +123,6 @@ export const Header = () => {
               <button onClick={signOut} className="btn btn-outline btn-sm">
                 Salir
               </button>
-              <div className="site-header__family-shell">
-                <button
-                  type="button"
-                  className="site-header__avatar"
-                  title={activeProfileLabel}
-                  aria-haspopup={canSwitchFamily ? 'menu' : undefined}
-                  aria-expanded={canSwitchFamily ? isFamilyMenuOpen : undefined}
-                  onClick={() => {
-                    if (!canSwitchFamily) return;
-                    setIsFamilyMenuOpen((value) => !value);
-                  }}
-                  disabled={isLoading}
-                >
-                  <img
-                    src={activeProfileAvatar}
-                    alt={activeProfileLabel}
-                    className="site-header__avatar-image"
-                  />
-                  <span className="site-header__avatar-name">{activeProfileLabel}</span>
-                </button>
-
-                {canSwitchFamily && isFamilyMenuOpen && (
-                  <div className="site-header__family-menu" role="menu" aria-label="Cambiar familiar">
-                    {children.map((child) => (
-                      <button
-                        key={child.id}
-                        type="button"
-                        className="site-header__family-option"
-                        onClick={() => {
-                          setActiveChildId(child.id);
-                          setIsFamilyMenuOpen(false);
-                        }}
-                        role="menuitem"
-                      >
-                        <img
-                          src={getAvatarSrc(child.avatarId)}
-                          alt={child.name}
-                          className="site-header__family-option-image"
-                        />
-                        <span>{child.name}</span>
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
             </>
           ) : (
             <>
@@ -111,6 +138,45 @@ export const Header = () => {
             </>
           )}
         </nav>
+
+        {isMobileMenuOpen && (
+          <div className="site-header__mobile-menu" role="menu" aria-label="Navegacion movil">
+            {user ? (
+              <>
+                <NavLink to="/dashboard" className="btn btn-ghost btn-sm" onClick={closeMobileMenu}>
+                  Panel
+                </NavLink>
+                <NavLink to="/account" className="btn btn-ghost btn-sm" onClick={closeMobileMenu}>
+                  Cuenta
+                </NavLink>
+                <NavLink to="/subscribe" className="btn btn-ghost btn-sm" onClick={closeMobileMenu}>
+                  Planes
+                </NavLink>
+                <button
+                  onClick={() => {
+                    closeMobileMenu();
+                    void signOut();
+                  }}
+                  className="btn btn-outline btn-sm"
+                >
+                  Salir
+                </button>
+              </>
+            ) : (
+              <>
+                <NavLink to="/subscribe" className="btn btn-ghost btn-sm" onClick={closeMobileMenu}>
+                  Planes
+                </NavLink>
+                <NavLink to="/login" className="btn btn-ghost btn-sm" onClick={closeMobileMenu}>
+                  Ingresar
+                </NavLink>
+                <Link to="/register" className="btn btn-primary btn-sm" onClick={closeMobileMenu}>
+                  Probar gratis
+                </Link>
+              </>
+            )}
+          </div>
+        )}
       </div>
     </header>
   );

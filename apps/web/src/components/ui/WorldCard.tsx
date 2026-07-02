@@ -9,6 +9,7 @@ interface WorldCardProps {
   badge: string;
   actionLabel: string;
   progress?: number;
+  progressLabel?: string;
   characterName: string;
   characterRole: string;
   characterImage?: string;
@@ -24,6 +25,7 @@ export const WorldCard = ({
   badge,
   actionLabel,
   progress = 0,
+  progressLabel,
   characterName,
   characterRole,
   characterImage,
@@ -44,6 +46,7 @@ export const WorldCard = ({
     <div className="progress-track" aria-hidden="true">
       <span style={{ width: `${progress}%` }} />
     </div>
+    {progressLabel && <div className="world-card__progress-label">{progressLabel}</div>}
     <button className={locked ? 'btn btn-outline' : 'btn btn-primary'} onClick={onAction}>
       {actionLabel}
     </button>

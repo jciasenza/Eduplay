@@ -5,7 +5,7 @@ import { EventBus, GameEvents } from './EventBus';
 
 interface PhaserGameProps {
   onGameReady?: (game: Phaser.Game) => void;
-  onLevelComplete?: (stats: { stars: number; time: number; moves: number }) => void;
+  onLevelComplete?: (stats: { stars: number; score: number; time: number; moves: number }) => void;
   onGameOver?: () => void;
   onUpdateScore?: (score: number) => void;
   onUpdateTime?: (time: number) => void;
@@ -84,7 +84,7 @@ export const PhaserGame: React.FC<PhaserGameProps> = ({
         height: '100%',
         display: 'flex',
         justifyContent: 'center',
-        alignItems: 'center',
+        alignItems: 'stretch',
         overflow: 'hidden',
         borderRadius: 'var(--radius-xl)',
         boxShadow: 'var(--shadow-lg)'

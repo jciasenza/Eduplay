@@ -1,18 +1,43 @@
+import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { WorldCard } from '../components/ui/WorldCard';
 import { useAuth } from '../hooks/useAuth';
 import { useLearningWorlds } from '../hooks/useLearningWorlds';
+import { useFamilyProfiles } from '../hooks/useFamilyProfiles';
 
 export const Dashboard = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const { worlds, isLoading, error } = useLearningWorlds();
+  const { activeChild } = useFamilyProfiles();
   const displayName =
     user?.user_metadata?.name ||
     user?.user_metadata?.full_name ||
     user?.user_metadata?.display_name ||
     user?.email ||
     'familia EduPlay';
+
+  const worldsWithProgress = useMemo(
+    () =>
+      worlds.map((world) => {
+        const totalLevels = world.games.reduce(
+          (total, game) => total + (game.levels?.length ?? 0),
+          0,
+        );
+        const worldProgress = activeChild?.worldProgress?.find(
+          (item) => item.worldId === world.sourceId || item.worldSlug === world.sourceSlug,
+        );
+        const completedLevels = worldProgress?.completedLevels ?? 0;
+        const progress = totalLevels > 0 ? Math.round((completedLevels / totalLevels) * 100) : 0;
+
+        return {
+          ...world,
+          progress,
+          progressLabel: totalLevels > 0 ? `${completedLevels}/${totalLevels} niveles` : 'Sin niveles',
+        };
+      }),
+    [activeChild?.worldProgress, worlds],
+  );
 
   return (
     <section className="dashboard-page">
@@ -42,9 +67,9 @@ export const Dashboard = () => {
           <div className="content-state">Cargando mundos...</div>
         ) : error ? (
           <div className="content-state content-state--error">{error}</div>
-        ) : worlds.length > 0 ? (
+        ) : worldsWithProgress.length > 0 ? (
           <div className="dashboard-grid">
-            {worlds.map((world) => (
+            {worldsWithProgress.map((world) => (
               <WorldCard
                 key={world.id}
                 {...world}

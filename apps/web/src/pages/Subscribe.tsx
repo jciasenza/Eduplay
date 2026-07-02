@@ -6,13 +6,7 @@ import { useScrollReveal } from '../hooks/useScrollReveal';
 export const Subscribe = () => {
   const navigate = useNavigate();
   useScrollReveal();
-  const currencyId = import.meta.env.VITE_MP_CURRENCY_ID || 'ARS';
-  const formatPrice = (priceInCents: number) =>
-    new Intl.NumberFormat('es-AR', {
-      style: 'currency',
-      currency: currencyId,
-      maximumFractionDigits: 2,
-    }).format(priceInCents / 100);
+  const formatPrice = (price: number) => `${price}`;
 
   const handleSuccess = () => {
     navigate('/subscription/success');
